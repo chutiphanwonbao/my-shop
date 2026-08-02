@@ -3,47 +3,243 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ร้านขายของชำ</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <title>ระบบคิดเงินร้านขายของชำ</title>
+    <!-- Google Fonts & Font Awesome -->
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Html5-QRCode -->
     <script src="https://unpkg.com/html5-qrcode"></script>
-</head>
-<body class="p-3">
-    <div class="container text-center">
-        <h4>🛒 คิดเงินร้านขายของชำ</h4>
-        <div id="reader" style="width: 100%; max-width: 400px; margin: auto;"></div>
-        
-        <hr>
-        <h5>เลือกสินค้าไม่มีบาร์โค้ด</h5>
-        <button class="btn btn-outline-primary btn-sm" onclick="addItem('ไข่ไก่', 5)">ไข่ไก่ (5฿)</button>
-        <button class="btn btn-outline-primary btn-sm" onclick="addItem('ผักบุ้ง', 10)">ผักบุ้ง (10฿)</button>
 
-        <hr>
-        <ul id="cart" class="list-group mb-3 text-start"></ul>
-        <h4>รวม: <span id="total" class="text-danger">0</span> บาท</h4>
-        
-        <button class="btn btn-success w-100 mt-3" onclick="sendToGoogleSheet()">✅ คิดเงิน & บันทึกลง Google Sheet</button>
+    <style>
+        * {
+            font-family: 'Prompt', sans-serif;
+        }
+        body {
+            background-color: #f4f6f9;
+            color: #333;
+            padding-bottom: 30px;
+        }
+        .pos-card {
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+            border: none;
+            overflow: hidden;
+        }
+        .header-title {
+            font-weight: 600;
+            color: #1e293b;
+        }
+        /* ตกแต่งช่องสแกนบาร์โค้ด */
+        #reader {
+            width: 100%;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 2px dashed #cbd5e1 !important;
+            background: #f8fafc;
+        }
+        #reader button {
+            background-color: #4f46e5 !important;
+            color: white !important;
+            border: none !important;
+            padding: 8px 16px !important;
+            border-radius: 8px !important;
+            font-weight: 500 !important;
+            margin-top: 10px !important;
+        }
+        /* ช่องค้นหาสินค้า */
+        .search-box-container {
+            position: relative;
+        }
+        .search-input {
+            border-radius: 10px;
+            padding: 10px 14px 10px 38px;
+            border: 1.5px solid #cbd5e1;
+        }
+        .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+        }
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+            z-index: 1000;
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
+        }
+        .search-item {
+            padding: 10px 14px;
+            cursor: pointer;
+            border-bottom: 1px solid #f1f5f9;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .search-item:hover {
+            background-color: #f8fafc;
+            color: #4f46e5;
+        }
+        /* รายการสินค้า */
+        .cart-list-item {
+            border: none;
+            border-bottom: 1px solid #f1f5f9;
+            padding: 12px 16px;
+        }
+        .total-box {
+            background-color: #f8fafc;
+            border-radius: 12px;
+            padding: 16px;
+            border: 1px solid #e2e8f0;
+        }
+        .btn-checkout {
+            background-color: #10b981;
+            color: #ffffff;
+            font-weight: 600;
+            border-radius: 12px;
+            padding: 14px;
+            border: none;
+            font-size: 1.1rem;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+        }
+        .btn-checkout:hover {
+            background-color: #059669;
+            color: #ffffff;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container my-3 my-md-4" style="max-width: 480px;">
+        <div class="card pos-card p-4">
+            
+            <!-- Header -->
+            <div class="text-center mb-3">
+                <h4 class="header-title m-0"><i class="fa-solid fa-store me-2 text-primary"></i>คิดเงินร้านขายของชำ</h4>
+                <small class="text-muted">สแกนบาร์โค้ดหรือค้นหาสินค้าด้านล่าง</small>
+            </div>
+
+            <!-- กล้องสแกนบาร์โค้ด -->
+            <div id="reader" class="mb-3"></div>
+
+            <!-- ช่องพิมพ์ค้นหาสินค้าไม่มีบาร์โค้ด -->
+            <div class="mb-3 search-box-container">
+                <label class="form-label text-secondary fw-medium small mb-1">🔍 ค้นหาสินค้าไม่มีบาร์โค้ด</label>
+                <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                <input type="text" id="searchInput" class="form-control search-input" placeholder="พิมพ์ชื่อสินค้า เช่น ไข่ไก่, ผักบุ้ง..." onkeyup="filterProducts()">
+                
+                <!-- ผลการค้นหาจะเด้งขึ้นมาตรงนี้ -->
+                <div id="searchResults" class="search-results"></div>
+            </div>
+
+            <hr class="text-black-50 my-3">
+
+            <!-- รายการสินค้าในตะกร้า -->
+            <div class="mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="fw-medium text-secondary small">🛍️ รายการในตะกร้า</span>
+                    <button class="btn btn-link btn-sm text-danger text-decoration-none p-0" onclick="clearCart()">ล้างทั้งหมด</button>
+                </div>
+                <ul id="cart" class="list-group list-group-flush mb-2"></ul>
+            </div>
+
+            <!-- สรุปรวมเงิน -->
+            <div class="total-box mb-3 d-flex justify-content-between align-items-center">
+                <span class="fw-medium text-secondary">ราคารวมทั้งหมด</span>
+                <span class="h3 m-0 text-primary fw-bold"><span id="total">0</span> <small class="fs-6 text-muted">บาท</small></span>
+            </div>
+
+            <!-- ปุ่มคิดเงิน -->
+            <button class="btn btn-checkout w-100" onclick="sendToGoogleSheet()">
+                <i class="fa-solid fa-circle-check me-2"></i>คิดเงิน & บันทึกลง Google Sheet
+            </button>
+
+        </div>
     </div>
 
     <script>
         // 🔗 วาง URL ที่ได้จาก Google Apps Script ที่นี่
         const WEB_APP_URL = "วาง_URL_GOOGLE_APPS_SCRIPT_ที่นี่";
 
-        // รายการสินค้าในระบบ (บาร์โค้ด -> ชื่อ, ราคา)
-        const db = {
+        // 1. สินค้าที่มีบาร์โค้ด (บาร์โค้ด -> ชื่อ, ราคา)
+        const barcodeDb = {
             "8850123456789": { name: "เลย์ 20 บาท", price: 20 },
-            "8850987654321": { name: "น้ำดื่ม ช้าง", price: 7 }
+            "8850987654321": { name: "น้ำดื่ม ช้าง 600ml", price: 7 }
         };
+
+        // 2. ฐานข้อมูลสินค้าไม่มีบาร์โค้ด (เพิ่มรายการสินค้าของคุณตรงนี้ได้เลย)
+        const manualProducts = [
+            { name: "ไข่ไก่ (ฟอง)", price: 5 },
+            { name: "ผักบุ้ง (กำ)", price: 10 },
+            { name: "หมูบด (ขีด)", price: 20 },
+            { name: "พริกจินดา (ขีด)", price: 15 },
+            { name: "กระเทียม (ถุง)", price: 10 },
+            { name: "ถุงพลาสติก", price: 1 }
+        ];
 
         let cart = [];
         let total = 0;
 
         // สแกนบาร์โค้ด
-        let scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
+        let scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: { width: 220, height: 140 } });
         scanner.render((barcode) => {
-            if (db[barcode]) {
-                addItem(db[barcode].name, db[barcode].price);
+            if (barcodeDb[barcode]) {
+                addItem(barcodeDb[barcode].name, barcodeDb[barcode].price);
             } else {
                 alert("ไม่พบบาร์โค้ดนี้: " + barcode);
+            }
+        });
+
+        // ฟังก์ชันค้นหาสินค้าจากช่องพิมพ์
+        function filterProducts() {
+            let input = document.getElementById("searchInput").value.trim().toLowerCase();
+            let resultsDiv = document.getElementById("searchResults");
+
+            if (input === "") {
+                resultsDiv.style.display = "none";
+                return;
+            }
+
+            let matches = manualProducts.filter(p => p.name.toLowerCase().includes(input));
+
+            if (matches.length > 0) {
+                let html = "";
+                matches.forEach(p => {
+                    html += `
+                        <div class="search-item" onclick="selectSearchItem('${p.name}', ${p.price})">
+                            <span>${p.name}</span>
+                            <span class="badge bg-primary rounded-pill">${p.price} ฿</span>
+                        </div>`;
+                });
+                resultsDiv.innerHTML = html;
+                resultsDiv.style.display = "block";
+            } else {
+                resultsDiv.innerHTML = `<div class="p-2 text-muted text-center small">ไม่พบสินค้า</div>`;
+                resultsDiv.style.display = "block";
+            }
+        }
+
+        function selectSearchItem(name, price) {
+            addItem(name, price);
+            document.getElementById("searchInput").value = "";
+            document.getElementById("searchResults").style.display = "none";
+        }
+
+        // ซ่อนกล่องค้นหาเมื่อคลิกนอกพื้นที่
+        document.addEventListener("click", function(e) {
+            if (!e.target.closest(".search-box-container")) {
+                document.getElementById("searchResults").style.display = "none";
             }
         });
 
@@ -53,16 +249,42 @@
             renderCart();
         }
 
+        function removeItem(index) {
+            total -= cart[index].price;
+            cart.splice(index, 1);
+            renderCart();
+        }
+
+        function clearCart() {
+            cart = [];
+            total = 0;
+            renderCart();
+        }
+
         function renderCart() {
             let html = "";
-            cart.forEach(item => {
-                html += `<li class="list-group-item d-flex justify-content-between">${item.name} <span>${item.price} ฿</span></li>`;
-            });
+            if (cart.length === 0) {
+                html = `<li class="list-group-item text-center text-muted small py-3">ยังไม่มีสินค้าในตะกร้า</li>`;
+            } else {
+                cart.forEach((item, index) => {
+                    html += `
+                        <li class="list-group-item cart-list-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="fw-medium">${item.name}</span>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="fw-semibold text-dark">${item.price} ฿</span>
+                                <button class="btn btn-sm btn-outline-danger border-0 p-1" onclick="removeItem(${index})">
+                                    <i class="fa-solid fa-xmark"></i>
+                                </button>
+                            </div>
+                        </li>`;
+                });
+            }
             document.getElementById("cart").innerHTML = html;
             document.getElementById("total").innerText = total;
         }
 
-        // ส่งข้อมูลตรงเข้า Google Sheet โดยไม่ผ่าน Server ตัวกลาง
         function sendToGoogleSheet() {
             if (cart.length === 0) return alert("ยังไม่มีสินค้าในตะกร้า");
 
@@ -75,11 +297,11 @@
                 body: JSON.stringify({ items: itemSummary, total: total })
             }).then(() => {
                 alert("บันทึกลง Google Sheet เรียบร้อย!");
-                cart = [];
-                total = 0;
-                renderCart();
+                clearCart();
             });
         }
+
+        renderCart();
     </script>
 </body>
 </html>
