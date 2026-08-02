@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>คลังสินค้า - ร้านขายของชำ</title>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        * { font-family: 'Prompt', sans-serif; }
+        body { background-color: #f4f6f9; padding-bottom: 30px; }
+        .card-custom { background: white; border-radius: 16px; border: none; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+    </style>
+</head>
+<body>
+    <div class="container my-3" style="max-width: 480px;">
+        <div class="card card-custom p-4">
+            
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="m-0 fw-bold"><i class="fa-solid fa-boxes-stacked me-2 text-primary"></i>เพิ่มสินค้าใหม่</h4>
+                <a href="index.html" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-cash-register me-1"></i>ไปหน้าคิดเงิน</a>
+            </div>
+
+            <!-- สแกนบาร์โค้ดเพื่อใส่เลขบาร์โค้ดอัตโนมัติ -->
+            <div id="reader" class="mb-3"></div>
+
+            <form id="productForm">
+                <div class="mb-3">
+                    <label class="form-label small fw-medium">ประเภทสินค้า</label>
+                    <select id="pType" class="form-select" onchange="toggleBarcodeField()">
+                        <option value="barcode">มีบาร์โค้ด</option>
+                        <option value="manual">ไม่มีบาร์โค้ด (ผัก/ผลไม้/ของแบ่งขาย)</option>
+                    </select>
+                </div>
+
+                <div class="mb-3" id="barcodeGroup">
+                    <label class="form-label small fw-medium">รหัสบาร์โค้ด</label>
+                    <input type="text" id="pBarcode" class="form-control" placeholder="สแกนจากกล้องหรือพิมพ์เลข">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-medium">ชื่อสินค้า</label>
+                    <input type="text" id="pName" class="form-control" placeholder="เช่น เลย์ 20 บาท, ไข่ไก่" required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-medium">ราคาขาย (บาท)</label>
+                    <input type="number" id="pPrice" class="form-control" placeholder="0.00" step="0.5" required>
+                </div>
+
+                <button type="button" class="btn btn-primary w-100 py-2 fw-bold" onclick="saveProduct()">
+                    <i class="fa-solid fa-floppy-disk me-2"></i>บันทึกเข้า Google Sheet
+                </button>
+            </form>
+
+        </div>
+    </div>
+
+    <script>
+        const WEB_APP_URL = "วาง_URL_GOOGLE_APPS_SCRIPT_ที่นี่";
+
+        // เปิดกล้องไว้สแกนหาเลขบาร์โค้ดเพื่อเติมในช่องอัตโนมัติ
+        let scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: { width: 220, height: 120 } });
+        scanner.render((barcode) => {
+            document.getElementById("pBarcode").value = barcode;
+            document.getElementById("pType").value = "barcode";
+            toggleBarcodeField();
+        });
+
+        function toggleBarcodeField() {
+            let type = document.getElementById("pType").value;
+            document.getElementById("barcodeGroup").style.display = (type === "barcode") ? "block" : "none";
+        }
+
+        function saveProduct() {
+            let type = document.getElementById("pType").value;
+            let barcode = document.getElementById("pBarcode").value.trim();
+            let name = document.getElementById("pName").value.trim();
+            let price = parseFloat(document.getElementById("pPrice").value);
+
+            if (!name || isNaN(price) || (type === "barcode" && !barcode)) {
+                alert("กรุณากรอกข้อมูลให้ครบถ้วน");
+                return;
+            }
+
+            fetch(WEB_APP_URL, {
+                method: "POST",
+                mode: "no-cors",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    action: "addProduct",
+                    type: type,
+                    barcode: barcode,
+                    name: name,
+                    price: price
+                })
+            }).then(() => {
+                alert("บันทึกสินค้าลง Google Sheet เรียบร้อย!");
+                document.getElementById("productForm").reset();
+            });
+        }
+    </script>
+</body>
+</html>
