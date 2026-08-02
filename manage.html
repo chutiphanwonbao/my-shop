@@ -23,7 +23,7 @@
                 <a href="index.html" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-cash-register me-1"></i>ไปหน้าคิดเงิน</a>
             </div>
 
-            <!-- กล้องสแกนบาร์โค้ด -->
+            <!-- สแกนบาร์โค้ด -->
             <div id="reader" class="mb-3"></div>
 
             <form id="productForm">
@@ -59,6 +59,7 @@
     </div>
 
     <script>
+        // 🔗 วาง URL ของ Google Apps Script ที่นี่
         const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxg7CUckIt30WEqFiHTW9u6UvlmjnYO54YbEdvOjkcvX_9NNjexu2wUy3ncOqqVcWAc/exec";
 
         let scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: { width: 220, height: 120 } });
@@ -70,53 +71,52 @@
 
         function toggleBarcodeField() {
             let type = document.getElementById("pType").value;
-            let barcodeGroup = document.getElementById("barcodeGroup");
-            if (type === "manual") {
-                barcodeGroup.style.display = "none";
-            } else {
-                barcodeGroup.style.display = "block";
-            }
+            document.getElementById("barcodeGroup").style.display = (type === "manual") ? "none" : "block";
         }
 
-        function saveProduct() {
-    let type = document.getElementById("pType").value;
-    let barcode = document.getElementById("pBarcode").value.trim();
-    let name = document.getElementById("pName").value.trim();
-    let price = parseFloat(document.getElementById("pPrice").value);
+        async function saveProduct() {
+            let type = document.getElementById("pType").value;
+            let barcode = document.getElementById("pBarcode").value.trim();
+            let name = document.getElementById("pName").value.trim();
+            let price = parseFloat(document.getElementById("pPrice").value);
 
-    if (!name || isNaN(price) || (type === "barcode" && !barcode)) {
-        alert("กรุณากรอกข้อมูลให้ครบถ้วน");
-        return;
-    }
-
-    let saveBtn = document.querySelector("button[onclick='saveProduct()']");
-    saveBtn.disabled = true;
-    saveBtn.innerText = "กำลังตรวจสอบข้อมูล...";
-
-    // Step 1: ดึงข้อมูลสินค้าเดิมมาเช็กซ้ำก่อน
-    fetch(WEB_APP_URL)
-        .then(res => res.json())
-        .then(products => {
-            let isDuplicateName = products.some(row => row[1] && row[1].toString().trim().toLowerCase() === name.toLowerCase());
-            let isDuplicateBarcode = (type === "barcode") && products.some(row => row[0] && row[0].toString().trim() === barcode);
-
-            if (isDuplicateName) {
-                alert("❌ ไม่สามารถบันทึกได้: มีชื่อสินค้านี้ (\"" + name + "\") ในระบบแล้ว!");
-                saveBtn.disabled = false;
-                saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk me-2"></i>บันทึกเข้า Google Sheet';
+            if (!name || isNaN(price) || (type === "barcode" && !barcode)) {
+                alert("กรุณากรอกข้อมูลให้ครบถ้วน");
                 return;
             }
 
-            if (isDuplicateBarcode) {
-                alert("❌ ไม่สามารถบันทึกได้: บาร์โค้ดนี้ (\"" + barcode + "\") ถูกใช้งานแล้ว!");
-                saveBtn.disabled = false;
-                saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk me-2"></i>บันทึกเข้า Google Sheet';
-                return;
+            let saveBtn = document.querySelector("button[onclick='saveProduct()']");
+            saveBtn.disabled = true;
+            saveBtn.innerText = "กำลังตรวจสอบข้อมูล...";
+
+            try {
+                // ดึงรายการสินค้ามาตรวจเช็กชื่อซ้ำ
+                let response = await fetch(WEB_APP_URL);
+                let products = await response.json();
+
+                if (Array.isArray(products)) {
+                    let isDuplicateName = products.some(row => row[1] && row[1].toString().trim().toLowerCase() === name.toLowerCase());
+                    let isDuplicateBarcode = (type === "barcode") && products.some(row => row[0] && row[0].toString().trim() === barcode);
+
+                    if (isDuplicateName) {
+                        alert("❌ ไม่สามารถบันทึกได้: มีชื่อสินค้านี้ (\"" + name + "\") ในระบบแล้ว!");
+                        resetButton(saveBtn);
+                        return;
+                    }
+
+                    if (isDuplicateBarcode) {
+                        alert("❌ ไม่สามารถบันทึกได้: บาร์โค้ดนี้ (\"" + barcode + "\") ถูกใช้งานแล้ว!");
+                        resetButton(saveBtn);
+                        return;
+                    }
+                }
+            } catch (err) {
+                console.warn("ไม่สามารถอ่านรายการสินค้าเดิมได้ แต่จะทำการบันทึกต่อ", err);
             }
 
-            // Step 2: ถ้าไม่ซ้ำ ส่งข้อมูลไปบันทึก
+            // ถ้าไม่ซ้ำ ส่งข้อมูลไปบันทึก
             saveBtn.innerText = "กำลังบันทึก...";
-            
+
             let formData = new URLSearchParams();
             formData.append("action", "addProduct");
             formData.append("type", type);
@@ -124,30 +124,27 @@
             formData.append("name", name);
             formData.append("price", price);
 
-            fetch(WEB_APP_URL, {
-                method: "POST",
-                mode: "no-cors",
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: formData.toString()
-            })
-            .then(() => {
+            try {
+                await fetch(WEB_APP_URL, {
+                    method: "POST",
+                    mode: "no-cors",
+                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                    body: formData.toString()
+                });
+
                 alert("✅ บันทึกสินค้าเรียบร้อยแล้ว!");
                 document.getElementById("productForm").reset();
-                saveBtn.disabled = false;
-                saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk me-2"></i>บันทึกเข้า Google Sheet';
-            })
-            .catch(err => {
-                alert("เกิดข้อผิดพลาดในการบันทึก");
-                saveBtn.disabled = false;
-                saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk me-2"></i>บันทึกเข้า Google Sheet';
-            });
-        })
-        .catch(err => {
-            alert("ไม่สามารถดึงข้อมูลคลังสินค้ามาตรวจสอบได้ กรุณาเช็กการเชื่อมต่อ");
-            saveBtn.disabled = false;
-            saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk me-2"></i>บันทึกเข้า Google Sheet';
-        });
-}
+            } catch (err) {
+                alert("เกิดข้อผิดพลาดในการส่งข้อมูลไป Google Sheet");
+            } finally {
+                resetButton(saveBtn);
+            }
+        }
+
+        function resetButton(btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-floppy-disk me-2"></i>บันทึกเข้า Google Sheet';
+        }
     </script>
 </body>
 </html>
