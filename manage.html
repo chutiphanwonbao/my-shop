@@ -79,32 +79,54 @@
         }
 
         function saveProduct() {
-            let type = document.getElementById("pType").value;
-            let barcode = document.getElementById("pBarcode").value.trim();
-            let name = document.getElementById("pName").value.trim();
-            let price = parseFloat(document.getElementById("pPrice").value);
+    let type = document.getElementById("pType").value;
+    let barcode = document.getElementById("pBarcode").value.trim();
+    let name = document.getElementById("pName").value.trim();
+    let price = parseFloat(document.getElementById("pPrice").value);
 
-            if (!name || isNaN(price) || (type === "barcode" && !barcode)) {
-                alert("กรุณากรอกข้อมูลให้ครบถ้วน");
-                return;
-            }
+    if (!name || isNaN(price) || (type === "barcode" && !barcode)) {
+        alert("กรุณากรอกข้อมูลให้ครบถ้วน");
+        return;
+    }
 
-            fetch(WEB_APP_URL, {
-                method: "POST",
-                mode: "no-cors",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    action: "addProduct",
-                    type: type,
-                    barcode: barcode,
-                    name: name,
-                    price: price
-                })
-            }).then(() => {
-                alert("บันทึกสินค้าเรียบร้อย! (หากเป็นสินค้าไม่มีบาร์โค้ด ระบบจะรันรหัส 5 หลัก เช่น 00001 ให้ใน Google Sheet)");
-                document.getElementById("productForm").reset();
-            });
+    // ปิดปุ่มชั่วคราวเพื่อกันคนกดซ้ำ
+    let saveBtn = document.querySelector("button[onclick='saveProduct()']");
+    saveBtn.disabled = true;
+    saveBtn.innerText = "กำลังบันทึก...";
+
+    fetch(WEB_APP_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" }, // ใช้ text/plain เพื่อเลี่ยง CORS error บน Apps Script
+        body: JSON.stringify({
+            action: "addProduct",
+            type: type,
+            barcode: barcode,
+            name: name,
+            price: price
+        })
+    })
+    .then(res => res.json())
+    .then(result => {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk me-2"></i>บันทึกเข้า Google Sheet';
+
+        if (result.status === "error" && result.message === "DUPLICATE_NAME") {
+            alert("❌ ไม่สามารถบันทึกได้: มีชื่อสินค้านี้ (\"" + name + "\") อยู่ในระบบแล้ว!");
+        } else if (result.status === "error" && result.message === "DUPLICATE_BARCODE") {
+            alert("❌ ไม่สามารถบันทึกได้: บาร์โค้ดนี้ (\"" + barcode + "\") ถูกใช้งานแล้ว!");
+        } else if (result.status === "success") {
+            alert("✅ บันทึกสำเร็จ! รหัสสินค้าคือ: " + result.barcode);
+            document.getElementById("productForm").reset();
+        } else {
+            alert("เกิดข้อผิดพลาด: " + JSON.stringify(result));
         }
+    })
+    .catch(err => {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk me-2"></i>บันทึกเข้า Google Sheet';
+        alert("เกิดข้อผิดพลาดในการเชื่อมต่อ หรือชื่อ/บาร์โค้ดอาจจะซ้ำกัน");
+    });
+}
     </script>
 </body>
 </html>
