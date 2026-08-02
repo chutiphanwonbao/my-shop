@@ -164,32 +164,54 @@
             <button class="btn btn-checkout w-100" onclick="sendToGoogleSheet()">
                 <i class="fa-solid fa-circle-check me-2"></i>คิดเงิน & บันทึกลง Google Sheet
             </button>
-
+<!-- ในส่วน Header ของ index.html ให้เพิ่มปุ่มไปยังหน้าเพิ่มสินค้า -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="header-title m-0"><i class="fa-solid fa-store me-2 text-primary"></i>คิดเงินร้านค้า</h4>
+    <a href="manage.html" class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-box-archive me-1"></i>เพิ่มสินค้า</a>
+</div>
         </div>
     </div>
 
+    <!-- ... โค้ด HTML ด้านบน ... -->
+
     <script>
-        // 🔗 วาง URL ที่ได้จาก Google Apps Script ที่นี่
-        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxg7CUckIt30WEqFiHTW9u6UvlmjnYO54YbEdvOjkcvX_9NNjexu2wUy3ncOqqVcWAc/exec";
+        // -------------------------------------------------------------
+        // 📌 วางโค้ดใหม่แทนที่ตรงนี้ได้เลยครับ!
+        // -------------------------------------------------------------
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbx.../exec"; // <-- อย่าลืมใส่ URL ของคุณ
 
-        // 1. สินค้าที่มีบาร์โค้ด (บาร์โค้ด -> ชื่อ, ราคา)
-        const barcodeDb = {
-            "8850123456789": { name: "เลย์ 20 บาท", price: 20 },
-            "8850987654321": { name: "น้ำดื่ม ช้าง 600ml", price: 7 }
-        };
+        let barcodeDb = {};
+        let manualProducts = [];
 
-        // 2. ฐานข้อมูลสินค้าไม่มีบาร์โค้ด (เพิ่มรายการสินค้าของคุณตรงนี้ได้เลย)
-        const manualProducts = [
-            { name: "ไข่ไก่ (ฟอง)", price: 5 },
-            { name: "ผักบุ้ง (กำ)", price: 10 },
-            { name: "หมูบด (ขีด)", price: 20 },
-            { name: "พริกจินดา (ขีด)", price: 15 },
-            { name: "กระเทียม (ถุง)", price: 10 },
-            { name: "ถุงพลาสติก", price: 1 }
-        ];
+        // โหลดข้อมูลสินค้าทั้งหมดจาก Google Sheet
+        function loadProductsFromSheet() {
+            fetch(WEB_APP_URL)
+                .then(res => res.json())
+                .then(data => {
+                    barcodeDb = {};
+                    manualProducts = [];
+                    
+                    data.forEach(row => {
+                        let [barcode, name, price, type] = row;
+                        if (type === "barcode") {
+                            barcodeDb[barcode] = { name: name, price: Number(price) };
+                        } else {
+                            manualProducts.push({ name: name, price: Number(price) });
+                        }
+                    });
+                    console.log("โหลดข้อมูลสินค้าสำเร็จ!");
+                })
+                .catch(err => console.error("โหลดสินค้าไม่สำเร็จ:", err));
+        }
+
+        // เรียกโหลดสินค้าทันทีที่เปิดหน้า
+        loadProductsFromSheet();
+        // -------------------------------------------------------------
 
         let cart = [];
         let total = 0;
+
+        // ... (โค้ดฟังก์ชันสแกนบาร์โค้ด และการทำงานอื่นๆ ด้านล่างปล่อยไว้เหมือนเดิม) ...
 
         // สแกนบาร์โค้ด
         let scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: { width: 220, height: 140 } });
