@@ -23,26 +23,26 @@
                 <a href="index.html" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-cash-register me-1"></i>ไปหน้าคิดเงิน</a>
             </div>
 
-            <!-- สแกนบาร์โค้ดเพื่อใส่เลขบาร์โค้ดอัตโนมัติ -->
+            <!-- กล้องสแกนบาร์โค้ด -->
             <div id="reader" class="mb-3"></div>
 
             <form id="productForm">
                 <div class="mb-3">
                     <label class="form-label small fw-medium">ประเภทสินค้า</label>
                     <select id="pType" class="form-select" onchange="toggleBarcodeField()">
-                        <option value="barcode">มีบาร์โค้ด</option>
-                        <option value="manual">ไม่มีบาร์โค้ด (ผัก/ผลไม้/ของแบ่งขาย)</option>
+                        <option value="barcode">มีบาร์โค้ดจริง</option>
+                        <option value="manual">ไม่มีบาร์โค้ด (สร้างรหัสอัตโนมัติ 5 หลัก)</option>
                     </select>
                 </div>
 
                 <div class="mb-3" id="barcodeGroup">
                     <label class="form-label small fw-medium">รหัสบาร์โค้ด</label>
-                    <input type="text" id="pBarcode" class="form-control" placeholder="สแกนจากกล้องหรือพิมพ์เลข">
+                    <input type="text" id="pBarcode" class="form-control" placeholder="สแกนกล้อง หรือ รหัส 5 หลัก เช่น 00001">
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label small fw-medium">ชื่อสินค้า</label>
-                    <input type="text" id="pName" class="form-control" placeholder="เช่น เลย์ 20 บาท, ไข่ไก่" required>
+                    <input type="text" id="pName" class="form-control" placeholder="เช่น ไข่ไก่, ผักบุ้ง" required>
                 </div>
 
                 <div class="mb-3">
@@ -61,7 +61,6 @@
     <script>
         const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxg7CUckIt30WEqFiHTW9u6UvlmjnYO54YbEdvOjkcvX_9NNjexu2wUy3ncOqqVcWAc/exec";
 
-        // เปิดกล้องไว้สแกนหาเลขบาร์โค้ดเพื่อเติมในช่องอัตโนมัติ
         let scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: { width: 220, height: 120 } });
         scanner.render((barcode) => {
             document.getElementById("pBarcode").value = barcode;
@@ -71,7 +70,12 @@
 
         function toggleBarcodeField() {
             let type = document.getElementById("pType").value;
-            document.getElementById("barcodeGroup").style.display = (type === "barcode") ? "block" : "none";
+            let barcodeGroup = document.getElementById("barcodeGroup");
+            if (type === "manual") {
+                barcodeGroup.style.display = "none";
+            } else {
+                barcodeGroup.style.display = "block";
+            }
         }
 
         function saveProduct() {
@@ -97,7 +101,7 @@
                     price: price
                 })
             }).then(() => {
-                alert("บันทึกสินค้าลง Google Sheet เรียบร้อย!");
+                alert("บันทึกสินค้าเรียบร้อย! (หากเป็นสินค้าไม่มีบาร์โค้ด ระบบจะรันรหัส 5 หลัก เช่น 00001 ให้ใน Google Sheet)");
                 document.getElementById("productForm").reset();
             });
         }
