@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>เครื่องคิดเงิน - ร้านขายของชำ</title>
+    <title>หน้าคิดเงิน - ร้านขายของชำ</title>
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -22,11 +22,11 @@
         <div class="card card-custom p-4">
             
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h4 class="m-0 fw-bold"><i class="fa-solid fa-calculator me-2 text-primary"></i>เครื่องคิดเงิน</h4>
+                <h4 class="m-0 fw-bold"><i class="fa-solid fa-cash-register me-2 text-primary"></i>คิดเงิน</h4>
                 <a href="manage.html" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-boxes-stacked me-1"></i>คลังสินค้า</a>
             </div>
 
-            <!-- สแกนบาร์โค้ด -->
+            <!-- โซนสแกนบาร์โค้ด -->
             <div class="mb-3 text-center">
                 <div id="reader" class="d-flex align-items-center justify-content-center text-white mb-2">
                     <span id="cameraStatus">กดปุ่มด้านล่างเพื่อเปิดกล้องสแกน</span>
@@ -36,23 +36,23 @@
                 </button>
             </div>
 
-            <!-- สลับโหมด: ค้นหาในคลัง / ระบุราคาเอง -->
+            <!-- สลับโหมด -->
             <ul class="nav nav-pills nav-justified mb-3">
                 <li class="nav-item">
                     <button class="nav-link active py-1 small" id="tab-search" onclick="switchMode('search')"><i class="fa-solid fa-magnifying-glass me-1"></i>ค้นหาในคลัง</button>
                 </li>
                 <li class="nav-item">
-                    <button class="nav-link py-1 small" id="tab-custom" onclick="switchMode('custom')"><i class="fa-solid fa-pen-to-square me-1"></i>สินค้าอื่นๆ / ระบุราคาเอง</button>
+                    <button class="nav-link py-1 small" id="tab-custom" onclick="switchMode('custom')"><i class="fa-solid fa-pen-to-square me-1"></i>สินค้าอื่นๆ / กำหนดราคาเอง</button>
                 </li>
             </ul>
 
-            <!-- โซน 1: ค้นหาในคลัง -->
+            <!-- โซนค้นหาในคลัง -->
             <div id="searchModeZone" class="input-group mb-3">
                 <input type="text" id="searchInput" class="form-control" placeholder="พิมพ์บาร์โค้ด, รหัส 5 หลัก หรือชื่อสินค้า">
                 <button class="btn btn-primary" type="button" onclick="searchAndAddProduct()"><i class="fa-solid fa-plus me-1"></i>เพิ่ม</button>
             </div>
 
-            <!-- โซน 2: สินค้าอื่นๆ / ระบุราคาเอง (เช่น น้ำแข็ง 5, 10, 20 บาท) -->
+            <!-- โซนสินค้าอื่นๆ -->
             <div id="customModeZone" class="mb-3" style="display: none;">
                 <div class="row g-2 mb-2">
                     <div class="col-7">
@@ -67,7 +67,7 @@
                 </button>
             </div>
 
-            <!-- ตะกร้าสินค้า -->
+            <!-- รายการในตะกร้า -->
             <div class="mb-3">
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <h6 class="fw-bold m-0"><i class="fa-solid fa-cart-shopping me-2"></i>รายการ (<span id="itemCount">0</span>)</h6>
@@ -96,18 +96,14 @@
                 </div>
             </div>
 
-            <!-- ปุ่มเสร็จสิ้น (แค่ล้างตะกร้าเตรียมรับลูกค้ารายต่อไป) -->
-            <button type="button" id="finishBtn" class="btn btn-success w-100 py-2 fw-bold fs-5" onclick="finishSale()" disabled>
-                <i class="fa-solid fa-circle-check me-2"></i>จบการขาย (รับลูกค้ารายต่อไป)
+            <button type="button" id="checkoutBtn" class="btn btn-success w-100 py-2 fw-bold fs-5" onclick="checkout()" disabled>
+                <i class="fa-solid fa-check-circle me-2"></i>ชำระเงินและบันทึกประวัติ
             </button>
 
         </div>
     </div>
 
     <script>
-        let lastScannedCode = "";
-let lastScanTime = 0;
-const SCAN_COOLDOWN = 10000; // หน่วงเวลา 1.5 วินาที (1500 ms) ก่อนจะยอมให้สแกนซ้ำได้
         const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzrdQG6AsybHZToeK8HAD3YkvXEpalw3s6Mtrd9AWC_BlBlCWexqF6T0e-Em9656nzY/exec";
 
         let productsList = [];
@@ -115,7 +111,6 @@ const SCAN_COOLDOWN = 10000; // หน่วงเวลา 1.5 วินาท�
         let html5QrCode = null;
         let isCamOpen = false;
 
-        // โหลดข้อมูลราคาจากคลังสินค้ามาไว้ในเครื่อง
         window.onload = function() {
             let callbackName = "handleLoadProducts_" + Math.round(Math.random() * 1000000);
             window[callbackName] = function(data) {
@@ -145,7 +140,6 @@ const SCAN_COOLDOWN = 10000; // หน่วงเวลา 1.5 วินาท�
             }
         }
 
-        // เพิ่มสินค้าคีย์มือ/ระบุราคาเอง
         function addCustomProduct() {
             let name = document.getElementById("customName").value.trim() || "สินค้าทั่วไป";
             let priceInput = document.getElementById("customPrice").value.trim();
@@ -171,7 +165,6 @@ const SCAN_COOLDOWN = 10000; // หน่วงเวลา 1.5 วินาท�
             renderCart();
         }
 
-        // ค้นหาและคำนวณราคาจากคลัง
         function searchAndAddProduct(code = null) {
             let searchKey = (code || document.getElementById("searchInput").value).toString().trim().toLowerCase();
             if (!searchKey) return;
@@ -215,7 +208,7 @@ const SCAN_COOLDOWN = 10000; // หน่วงเวลา 1.5 วินาท�
                 cartList.innerHTML = '<div class="text-center text-muted py-4 small">ยังไม่มีสินค้าในตะกร้า</div>';
                 document.getElementById("grandTotal").innerText = "0.00";
                 document.getElementById("itemCount").innerText = "0";
-                document.getElementById("finishBtn").disabled = true;
+                document.getElementById("checkoutBtn").disabled = true;
                 calculateChange();
                 return;
             }
@@ -243,7 +236,7 @@ const SCAN_COOLDOWN = 10000; // หน่วงเวลา 1.5 วินาท�
             cartList.innerHTML = html;
             document.getElementById("grandTotal").innerText = total.toFixed(2);
             document.getElementById("itemCount").innerText = totalQty;
-            document.getElementById("finishBtn").disabled = false;
+            document.getElementById("checkoutBtn").disabled = false;
             calculateChange();
         }
 
@@ -273,13 +266,52 @@ const SCAN_COOLDOWN = 10000; // หน่วงเวลา 1.5 วินาท�
             }
         }
 
-        // กดปุ่มจบการขาย -> แสดงทอนเงินแล้วรีเซ็ตตะกร้าเพื่อรับลูกค้าคนถัดไปทันที (ไม่ต้องรอส่งข้อมูล)
-        function finishSale() {
-            let change = document.getElementById("changeOutput").value;
-            alert("✨ คิดเงินเรียบร้อย!\nเงินทอน: " + change + " บาท");
-            clearCart();
+        // 🟢 ชำระเงิน + บันทึกประวัติลง Google Sheet
+        function checkout() {
+            let total = parseFloat(document.getElementById("grandTotal").innerText) || 0;
+            let cash = parseFloat(document.getElementById("cashInput").value) || 0;
+
+            if (cart.length === 0) return;
+
+            if (cash < total) {
+                alert("⚠️ เงินที่รับมาน้อยกว่าราคาสินค้ารวม!");
+                document.getElementById("cashInput").focus();
+                return;
+            }
+
+            let btn = document.getElementById("checkoutBtn");
+            btn.disabled = true;
+            btn.innerText = "กำลังบันทึกประวัติการขาย...";
+
+            let summary = cart.map(i => `${i.name} (x${i.qty})`).join(", ");
+
+            let formData = new URLSearchParams();
+            formData.append("action", "checkout");
+            formData.append("itemsSummary", summary);
+            formData.append("total", total);
+
+            fetch(WEB_APP_URL, {
+                method: "POST",
+                mode: "no-cors",
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded"
+                },
+                body: formData.toString()
+            })
+            .then(() => {
+                alert("✅ บันทึกการขายเรียบร้อย!\nเงินทอน: " + document.getElementById("changeOutput").value + " บาท");
+                clearCart();
+            })
+            .catch(err => {
+                alert("เกิดข้อผิดพลาดในการบันทึก");
+            })
+            .finally(() => {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-check-circle me-2"></i>ชำระเงินและบันทึกประวัติ';
+            });
         }
 
+        // ระบบสแกนกล้อง (ติดแล้วปิดให้อัตโนมัติ ป้องกันสแกนเบิ้ล)
         async function toggleCamera() {
             const btn = document.getElementById("toggleCamBtn");
             const statusText = document.getElementById("cameraStatus");
@@ -304,22 +336,11 @@ const SCAN_COOLDOWN = 10000; // หน่วงเวลา 1.5 วินาท�
                         { facingMode: "environment" },
                         { fps: 10, qrbox: { width: 250, height: 150 } },
                         (decodedText) => {
-                            let currentTime = new Date().getTime();
-
-                            // ⛔ ถ้าสแกนได้รหัสเดิม และเวลาผ่านไปไม่ถึง 1.5 วินาที -> ให้ข้ามไป (ไม่เพิ่มซ้ำ)
-                            if (decodedText === lastScannedCode && (currentTime - lastScanTime) < SCAN_COOLDOWN) {
-                                return;
-                            }
-
-                            // อัปเดตเวลากับรหัสล่าสุด
-                            lastScannedCode = decodedText;
-                            lastScanTime = currentTime;
-
-                            // เพิ่มสินค้าเข้าตะกร้า
                             searchAndAddProduct(decodedText);
-
-                            // สั่นเตือนเมื่อสแกนติดสำเร็จ
                             if (navigator.vibrate) navigator.vibrate(100);
+                            
+                            // 🛑 สแกนติดแล้วปิดกล้องให้อัตโนมัติทันที
+                            toggleCamera();
                         },
                         (err) => {}
                     );
