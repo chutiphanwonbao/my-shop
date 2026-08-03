@@ -47,9 +47,12 @@
                 </li>
             </ul>
 
-            <!-- โซนค้นหาในคลัง -->
+            <!-- โซนค้นหาในคลัง (เพิ่ม Dropdown List ค้นหาอัตโนมัติ) -->
             <div id="searchModeZone" class="input-group mb-3">
-                <input type="text" id="searchInput" class="form-control" placeholder="พิมพ์บาร์โค้ด, รหัส 5 หลัก หรือชื่อสินค้า">
+                <input type="text" id="searchInput" class="form-control" placeholder="พิมพ์บาร์โค้ด, รหัส 5 หลัก หรือชื่อสินค้า" list="productsDataList" oninput="checkAutoAdd(this.value)">
+                <datalist id="productsDataList">
+                    <!-- รายการสินค้าจะถูกสร้างใส่ในนี้อัตโนมัติ -->
+                </datalist>
                 <button class="btn btn-primary" type="button" onclick="searchAndAddProduct()"><i class="fa-solid fa-plus me-1"></i>เพิ่ม</button>
             </div>
 
@@ -121,7 +124,10 @@
         window.onload = function() {
             let callbackName = "handleLoadProducts_" + Math.round(Math.random() * 1000000);
             window[callbackName] = function(data) {
-                if (Array.isArray(data)) productsList = data;
+                if (Array.isArray(data)) {
+                    productsList = data;
+                    renderDataList(); // 👈 สร้างรายการ Dropdown List
+                }
                 delete window[callbackName];
                 let scriptElem = document.getElementById(callbackName);
                 if (scriptElem) scriptElem.remove();
@@ -132,6 +138,31 @@
             script.src = WEB_APP_URL + "?callback=" + callbackName;
             document.body.appendChild(script);
         };
+
+        // ฟังก์ชันสร้าง Dropdown List ให้เลือกลิสต์สินค้า
+        function renderDataList() {
+            let datalist = document.getElementById("productsDataList");
+            if (!datalist) return;
+            
+            let html = "";
+            productsList.forEach(p => {
+                let barcode = p[0] || "";
+                let name = p[1] || "";
+                let price = p[2] || "0";
+                
+                // แสดงเป็น: ชื่อสินค้า (ราคา บาท) - รหัส
+                html += `<option value="${name}">${barcode ? '[' + barcode + '] ' : ''}${price} บาท</option>`;
+            });
+            datalist.innerHTML = html;
+        }
+
+        // เมื่อกดเลือกรายการจาก Dropdown ให้เพิ่มเข้าตะกร้าทันที
+        function checkAutoAdd(val) {
+            let found = productsList.find(p => p[1] === val || p[0] === val);
+            if (found) {
+                searchAndAddProduct(val);
+            }
+        }
 
         function switchMode(mode) {
             if (mode === 'search') {
@@ -336,51 +367,45 @@
             });
         }
 
-        // ระบบสแกนกล้องแบบแม่นยำสูง (โฟกัสบาร์โค้ดแท่งได้ตรงเป๊ะ)
-        async function toggleCamera() {
+       async function toggleCamera() {
             const btn = document.getElementById("toggleCamBtn");
             const statusText = document.getElementById("cameraStatus");
 
             if (isCamOpen) {
-                if (html5QrCode) {
-                    await html5QrCode.stop();
-                    html5QrCode = null;
-                }
+                try {
+                    if (html5QrCode) {
+                        await html5QrCode.stop();
+                        html5QrCode.clear();
+                        html5QrCode = null;
+                    }
+                } catch(e) {}
                 isCamOpen = false;
                 btn.className = "btn btn-sm btn-outline-primary";
                 btn.innerHTML = '<i class="fa-solid fa-camera me-1"></i>เปิดกล้องสแกนสินค้า';
                 if(statusText) statusText.style.display = "block";
             } else {
                 try {
-                    if (!html5QrCode) {
-                        html5QrCode = new Html5Qrcode("reader");
+                    // ถ้ามีค้างอยู่ให้ล้างก่อนเปิดใหม่
+                    if (html5QrCode) {
+                        try { await html5QrCode.stop(); html5QrCode.clear(); } catch(e) {}
+                        html5QrCode = null;
                     }
+
+                    html5QrCode = new Html5Qrcode("reader");
                     if(statusText) statusText.style.display = "none";
 
-                    // Config ปรับแต่งให้สแกนบาร์โค้ดสินค้าแม่นยำขึ้น
-                    const scanConfig = { 
-                        fps: 15, // เพิ่มความเร็วเฟรมเรตให้อ่านไวขึ้น
-                        qrbox: { width: 280, height: 120 }, // ปรับกรอบสแกนเป็นสี่เหลี่ยมผืนผ้าแนวนอน (เหมาะกับบาร์โค้ดแท่ง)
-                        aspectRatio: 1.0,
-                        experimentalFeatures: {
-                            useBarCodeDetectorIfSupported: true // ใช้ตัวจับบาร์โค้ดระดับฮาร์ดแวร์ของมือถือ (ถ้ามี)
-                        }
+                    const config = { 
+                        fps: 10, 
+                        qrbox: { width: 260, height: 140 }
                     };
 
-                    // ตั้งค่ากล้องให้โฟกัสภาพคมชัด
-                    const cameraConfig = { 
-                        facingMode: "environment",
-                        width: { min: 640, ideal: 1280 },
-                        height: { min: 480, ideal: 720 }
-                    };
-
+                    // ใช้ facingMode แบบยืดหยุ่นเพื่อป้องกันเบราว์เซอร์งงกล้องหลัง
                     await html5QrCode.start(
-                        cameraConfig,
-                        scanConfig,
+                        { facingMode: { exact: "environment" } },
+                        config,
                         (decodedText) => {
                             let currentTime = new Date().getTime();
 
-                            // ตรรกะป้องกันสแกนซ้ำ 10 วินาทีสำหรับสินค้าชิ้นเดิม
                             if (decodedText === lastScannedCode && (currentTime - lastScanTime) < SCAN_COOLDOWN) {
                                 return;
                             }
@@ -392,13 +417,28 @@
                             if (navigator.vibrate) navigator.vibrate(100);
                         },
                         (err) => {}
-                    );
+                    ).catch(async () => {
+                        // Fallback: ถ้าเครื่องไม่รองรับ exact ให้ลองกล้องหลังแบบธรรมดา
+                        await html5QrCode.start(
+                            { facingMode: "environment" },
+                            config,
+                            (decodedText) => {
+                                let currentTime = new Date().getTime();
+                                if (decodedText === lastScannedCode && (currentTime - lastScanTime) < SCAN_COOLDOWN) return;
+                                lastScannedCode = decodedText;
+                                lastScanTime = currentTime;
+                                searchAndAddProduct(decodedText);
+                                if (navigator.vibrate) navigator.vibrate(100);
+                            },
+                            (err) => {}
+                        );
+                    });
 
                     isCamOpen = true;
                     btn.className = "btn btn-sm btn-outline-danger";
                     btn.innerHTML = '<i class="fa-solid fa-camera-rotate me-1"></i>ปิดกล้อง';
                 } catch (err) {
-                    alert("⚠️ ไม่สามารถเปิดกล้องได้ โปรดตรวจสอบสิทธิ์กล้อง");
+                    alert("⚠️ ไม่สามารถเปิดกล้องได้ โปรดตรวจสอบสิทธิ์กล้องที่แม่กุญแจ 🔒 มุมบนของเบราว์เซอร์");
                 }
             }
         }
