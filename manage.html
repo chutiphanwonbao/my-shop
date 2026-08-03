@@ -12,7 +12,7 @@
         * { font-family: 'Prompt', sans-serif; }
         body { background-color: #f4f6f9; padding-bottom: 30px; }
         .card-custom { background: white; border-radius: 16px; border: none; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
-        #reader { width: 100%; border-radius: 12px; overflow: hidden; background: #222; min-height: 200px; }
+        #reader { width: 100%; border-radius: 12px; overflow: hidden; background: #222; min-height: 180px; }
     </style>
 </head>
 <body>
@@ -58,7 +58,7 @@
                     <input type="number" id="pPrice" class="form-control" placeholder="0.00" step="0.5" required>
                 </div>
 
-                <button type="button" class="btn btn-primary w-100 py-2 fw-bold" onclick="saveProduct()">
+                <button type="button" id="saveBtn" class="btn btn-primary w-100 py-2 fw-bold" onclick="saveProduct()">
                     <i class="fa-solid fa-floppy-disk me-2"></i>บันทึกเข้า Google Sheet
                 </button>
             </form>
@@ -77,7 +77,6 @@
             const statusText = document.getElementById("cameraStatus");
 
             if (isCamOpen) {
-                // ปิดกล้อง
                 if (html5QrCode) {
                     await html5QrCode.stop();
                     html5QrCode = null;
@@ -87,32 +86,24 @@
                 btn.innerHTML = '<i class="fa-solid fa-camera me-1"></i>เปิดกล้องสแกนบาร์โค้ด';
                 if(statusText) statusText.style.display = "block";
             } else {
-                // เปิดกล้อง
                 try {
                     if (!html5QrCode) {
                         html5QrCode = new Html5Qrcode("reader");
                     }
                     if(statusText) statusText.style.display = "none";
                     
-                    // บังคับใช้กล้องหลัง (facingMode: environment)
                     await html5QrCode.start(
                         { facingMode: "environment" },
                         { fps: 10, qrbox: { width: 250, height: 150 } },
                         (decodedText) => {
-                            // เมื่อสแกนเจอ
                             document.getElementById("pBarcode").value = decodedText;
                             document.getElementById("pType").value = "barcode";
                             toggleBarcodeField();
                             
-                            // สั่นแจ้งเตือนถ้าเครื่องรองรับ
                             if (navigator.vibrate) navigator.vibrate(100);
-                            
-                            // ปิดกล้องหลังสแกนสำเร็จ
-                            toggleCamera();
+                            toggleCamera(); // สแกนติดแล้วปิดกล้องให้
                         },
-                        (errorMessage) => {
-                            // ข้าม error ชั่วคราวขณะสแกน
-                        }
+                        (errorMessage) => {}
                     );
 
                     isCamOpen = true;
@@ -120,10 +111,7 @@
                     btn.innerHTML = '<i class="fa-solid fa-camera-rotate me-1"></i>ปิดกล้อง';
 
                 } catch (err) {
-                    alert("⚠️ ไม่สามารถเปิดกล้องได้: โปรดตรวจสอบว่าอนุญาตสิทธิ์การใช้กล้องแล้ว และใช้งานผ่าน HTTPS (GitHub Pages)");
-                    btn.className = "btn btn-sm btn-outline-primary";
-                    btn.innerHTML = '<i class="fa-solid fa-camera me-1"></i>เปิดกล้องสแกนบาร์โค้ด';
-                    if(statusText) statusText.style.display = "block";
+                    alert("⚠️ ไม่สามารถเปิดกล้องได้ โปรดตรวจสอบการอนุญาตสิทธิ์กล้องบนเบราว์เซอร์");
                 }
             }
         }
@@ -140,7 +128,7 @@
             let priceInput = document.getElementById("pPrice").value.trim();
             let price = parseFloat(priceInput);
 
-            // ⛔ เช็กห้ามเว้นว่าง
+            // ⛔ 1. ตรวจสอบค่าว่าง
             if (name === "") {
                 alert("⚠️ กรุณากรอก \"ชื่อสินค้า\" (ห้ามเว้นว่าง)");
                 document.getElementById("pName").focus();
@@ -148,7 +136,7 @@
             }
 
             if (priceInput === "" || isNaN(price) || price < 0) {
-                alert("⚠️ กรุณากรอก \"ราคาขาย\" ให้ถูกต้อง (ต้องมากกว่าหรือเท่ากับ 0 บาท)");
+                alert("⚠️ กรุณากรอก \"ราคาขาย\" ให้ถูกต้อง");
                 document.getElementById("pPrice").focus();
                 return;
             }
@@ -159,10 +147,11 @@
                 return;
             }
 
-            let saveBtn = document.querySelector("button[onclick='saveProduct()']");
+            let saveBtn = document.getElementById("saveBtn");
             saveBtn.disabled = true;
             saveBtn.innerText = "กำลังตรวจสอบและบันทึก...";
 
+            // 2. เรียกส่งข้อมูลไปยัง Apps Script ด้วย JSONP
             let callbackName = "handleResponse_" + Math.round(Math.random() * 1000000);
 
             window[callbackName] = function(response) {
@@ -170,12 +159,15 @@
                 saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk me-2"></i>บันทึกเข้า Google Sheet';
 
                 if (response.status === "DUPLICATE_NAME") {
-                    alert("❌ ไม่สามารถบันทึกได้: มีชื่อสินค้านี้ (\"" + name + "\") ในระบบแล้ว!");
+                    alert("❌ ไม่สามารถบันทึกได้: มีชื่อสินค้านี้ (\"" + name + "\") ในคลังแล้ว!");
                 } else if (response.status === "DUPLICATE_BARCODE") {
-                    alert("❌ ไม่สามารถบันทึกได้: บาร์โค้ดนี้ (\"" + barcode + "\") ถูกใช้งานแล้ว!");
+                    alert("❌ ไม่สามารถบันทึกได้: รหัสบาร์โค้ดนี้ (\"" + barcode + "\") ถูกใช้งานแล้ว!");
+                } else if (response.status === "EMPTY_DATA") {
+                    alert("⚠️ กรอกข้อมูลไม่ครบถ้วน");
                 } else if (response.status === "SUCCESS") {
                     alert("✅ บันทึกสินค้าเรียบร้อยแล้ว! (รหัสสินค้า: " + response.barcode + ")");
                     document.getElementById("productForm").reset();
+                    toggleBarcodeField();
                 } else {
                     alert("เกิดข้อผิดพลาดในการบันทึก");
                 }
