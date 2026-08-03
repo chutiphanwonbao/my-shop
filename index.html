@@ -15,6 +15,7 @@
         #reader { width: 100%; border-radius: 12px; overflow: hidden; background: #222; min-height: 180px; }
         .cart-item { border-bottom: 1px dashed #dee2e6; padding: 10px 0; }
         .total-banner { background: #0d6efd; color: white; border-radius: 12px; padding: 15px; }
+        .qty-btn { width: 28px; height: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; }
     </style>
 </head>
 <body>
@@ -96,8 +97,9 @@
                 </div>
             </div>
 
-            <button type="button" id="checkoutBtn" class="btn btn-success w-100 py-2 fw-bold fs-5" onclick="checkout()" disabled>
-                <i class="fa-solid fa-check-circle me-2"></i>ชำระเงินและบันทึกประวัติ
+            <!-- ปุ่มบันทึกประวัติการขาย -->
+            <button type="button" id="checkoutBtn" class="btn btn-success w-100 py-3 fw-bold fs-5 shadow-sm" onclick="checkout()">
+                <i class="fa-solid fa-floppy-disk me-2"></i>ชำระเงินและบันทึกประวัติ
             </button>
 
         </div>
@@ -110,6 +112,11 @@
         let cart = [];
         let html5QrCode = null;
         let isCamOpen = false;
+
+        // ตัวแปรสำหรับหน่วงเวลาการสแกนเฉพาะสินค้าชิ้นเดิม (10 วินาที)
+        let lastScannedCode = "";
+        let lastScanTime = 0;
+        const SCAN_COOLDOWN = 10000; // 10 วินาที
 
         window.onload = function() {
             let callbackName = "handleLoadProducts_" + Math.round(Math.random() * 1000000);
@@ -199,6 +206,7 @@
             }
         }
 
+        // แสดงผลตารางพร้อมปุ่มเพิ่ม/ลด (+/-)
         function renderCart() {
             let cartList = document.getElementById("cartList");
             let total = 0;
@@ -208,7 +216,6 @@
                 cartList.innerHTML = '<div class="text-center text-muted py-4 small">ยังไม่มีสินค้าในตะกร้า</div>';
                 document.getElementById("grandTotal").innerText = "0.00";
                 document.getElementById("itemCount").innerText = "0";
-                document.getElementById("checkoutBtn").disabled = true;
                 calculateChange();
                 return;
             }
@@ -223,11 +230,17 @@
                     <div class="cart-item d-flex justify-content-between align-items-center">
                         <div>
                             <div class="fw-bold">${item.name}</div>
-                            <small class="text-muted">${item.price} บาท x ${item.qty}</small>
+                            <small class="text-muted">${item.price} บาท/ชิ้น</small>
                         </div>
                         <div class="d-flex align-items-center gap-2">
-                            <span class="fw-bold text-primary">${itemTotal.toFixed(2)}</span>
-                            <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="removeItem(${index})"><i class="fa-solid fa-trash"></i></button>
+                            <!-- ปุ่มบวก-ลบ จำนวนสินค้า -->
+                            <div class="d-flex align-items-center bg-light rounded-pill px-1 border">
+                                <button class="btn btn-sm btn-outline-secondary qty-btn" onclick="updateQty(${index}, -1)"><i class="fa-solid fa-minus fs-7"></i></button>
+                                <span class="fw-bold px-2 small">${item.qty}</span>
+                                <button class="btn btn-sm btn-outline-secondary qty-btn" onclick="updateQty(${index}, 1)"><i class="fa-solid fa-plus fs-7"></i></button>
+                            </div>
+                            <span class="fw-bold text-primary ms-1" style="min-width: 60px; text-align: right;">${itemTotal.toFixed(2)}</span>
+                            <button class="btn btn-sm btn-outline-danger py-0 px-2 ms-1" onclick="removeItem(${index})"><i class="fa-solid fa-trash"></i></button>
                         </div>
                     </div>
                 `;
@@ -236,8 +249,18 @@
             cartList.innerHTML = html;
             document.getElementById("grandTotal").innerText = total.toFixed(2);
             document.getElementById("itemCount").innerText = totalQty;
-            document.getElementById("checkoutBtn").disabled = false;
             calculateChange();
+        }
+
+        // ฟังก์ชันปรับเพิ่ม/ลด จำนวนสินค้า (+/-)
+        function updateQty(index, change) {
+            if (cart[index]) {
+                cart[index].qty += change;
+                if (cart[index].qty <= 0) {
+                    cart.splice(index, 1);
+                }
+                renderCart();
+            }
         }
 
         function removeItem(index) {
@@ -266,12 +289,14 @@
             }
         }
 
-        // 🟢 ชำระเงิน + บันทึกประวัติลง Google Sheet
         function checkout() {
+            if (cart.length === 0) {
+                alert("⚠️ กรุณาเลือกสินค้าเข้าตะกร้าก่อนทำการชำระเงิน");
+                return;
+            }
+
             let total = parseFloat(document.getElementById("grandTotal").innerText) || 0;
             let cash = parseFloat(document.getElementById("cashInput").value) || 0;
-
-            if (cart.length === 0) return;
 
             if (cash < total) {
                 alert("⚠️ เงินที่รับมาน้อยกว่าราคาสินค้ารวม!");
@@ -307,11 +332,11 @@
             })
             .finally(() => {
                 btn.disabled = false;
-                btn.innerHTML = '<i class="fa-solid fa-check-circle me-2"></i>ชำระเงินและบันทึกประวัติ';
+                btn.innerHTML = '<i class="fa-solid fa-floppy-disk me-2"></i>ชำระเงินและบันทึกประวัติ';
             });
         }
 
-        // ระบบสแกนกล้อง (ติดแล้วปิดให้อัตโนมัติ ป้องกันสแกนเบิ้ล)
+        // ระบบสแกนกล้องแบบ POS ห้าง
         async function toggleCamera() {
             const btn = document.getElementById("toggleCamBtn");
             const statusText = document.getElementById("cameraStatus");
@@ -336,11 +361,20 @@
                         { facingMode: "environment" },
                         { fps: 10, qrbox: { width: 250, height: 150 } },
                         (decodedText) => {
+                            let currentTime = new Date().getTime();
+
+                            // 🧠 ตรรกะห้าง:
+                            // 1. ถ้าบาร์โค้ดไม่เหมือนเดิม -> สแกนติดทันที (ไม่รอ)
+                            // 2. ถ้าเป็นบาร์โค้ดเดิม -> ต้องรอผ่านไป 10 วินาที ถึงจะยอมให้ยิงซ้ำ
+                            if (decodedText === lastScannedCode && (currentTime - lastScanTime) < SCAN_COOLDOWN) {
+                                return;
+                            }
+
+                            lastScannedCode = decodedText;
+                            lastScanTime = currentTime;
+
                             searchAndAddProduct(decodedText);
                             if (navigator.vibrate) navigator.vibrate(100);
-                            
-                            // 🛑 สแกนติดแล้วปิดกล้องให้อัตโนมัติทันที
-                            toggleCamera();
                         },
                         (err) => {}
                     );
