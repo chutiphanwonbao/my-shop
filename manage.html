@@ -74,7 +74,7 @@
             document.getElementById("barcodeGroup").style.display = (type === "manual") ? "none" : "block";
         }
 
-        async function saveProduct() {
+        function saveProduct() {
             let type = document.getElementById("pType").value;
             let barcode = document.getElementById("pBarcode").value.trim();
             let name = document.getElementById("pName").value.trim();
@@ -87,36 +87,9 @@
 
             let saveBtn = document.querySelector("button[onclick='saveProduct()']");
             saveBtn.disabled = true;
-            saveBtn.innerText = "กำลังตรวจสอบข้อมูล...";
-
-            try {
-                // ดึงรายการสินค้ามาตรวจเช็กชื่อซ้ำ
-                let response = await fetch(WEB_APP_URL);
-                let products = await response.json();
-
-                if (Array.isArray(products)) {
-                    let isDuplicateName = products.some(row => row[1] && row[1].toString().trim().toLowerCase() === name.toLowerCase());
-                    let isDuplicateBarcode = (type === "barcode") && products.some(row => row[0] && row[0].toString().trim() === barcode);
-
-                    if (isDuplicateName) {
-                        alert("❌ ไม่สามารถบันทึกได้: มีชื่อสินค้านี้ (\"" + name + "\") ในระบบแล้ว!");
-                        resetButton(saveBtn);
-                        return;
-                    }
-
-                    if (isDuplicateBarcode) {
-                        alert("❌ ไม่สามารถบันทึกได้: บาร์โค้ดนี้ (\"" + barcode + "\") ถูกใช้งานแล้ว!");
-                        resetButton(saveBtn);
-                        return;
-                    }
-                }
-            } catch (err) {
-                console.warn("ไม่สามารถอ่านรายการสินค้าเดิมได้ แต่จะทำการบันทึกต่อ", err);
-            }
-
-            // ถ้าไม่ซ้ำ ส่งข้อมูลไปบันทึก
             saveBtn.innerText = "กำลังบันทึก...";
 
+            // ส่งข้อมูลด้วย Form Data ทันที ไม่ต้องรอดึงข้อมูลเดิม
             let formData = new URLSearchParams();
             formData.append("action", "addProduct");
             formData.append("type", type);
@@ -124,26 +97,23 @@
             formData.append("name", name);
             formData.append("price", price);
 
-            try {
-                await fetch(WEB_APP_URL, {
-                    method: "POST",
-                    mode: "no-cors",
-                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                    body: formData.toString()
-                });
-
-                alert("✅ บันทึกสินค้าเรียบร้อยแล้ว!");
+            fetch(WEB_APP_URL, {
+                method: "POST",
+                mode: "no-cors",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: formData.toString()
+            })
+            .then(() => {
+                alert("✅ ส่งข้อมูลบันทึกเรียบร้อยแล้ว!");
                 document.getElementById("productForm").reset();
-            } catch (err) {
-                alert("เกิดข้อผิดพลาดในการส่งข้อมูลไป Google Sheet");
-            } finally {
-                resetButton(saveBtn);
-            }
-        }
-
-        function resetButton(btn) {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fa-solid fa-floppy-disk me-2"></i>บันทึกเข้า Google Sheet';
+            })
+            .catch(err => {
+                alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+            })
+            .finally(() => {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk me-2"></i>บันทึกเข้า Google Sheet';
+            });
         }
     </script>
 </body>
