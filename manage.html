@@ -103,7 +103,46 @@
             saveBtn.disabled = true;
             saveBtn.innerText = "กำลังตรวจสอบและบันทึก...";
 
-            // ... (โค้ด JSONP ส่วนเดิมด้านล่างปล่อยไว้เหมือนเดิมได้เลยครับ) ...
+            // 2. ส่งข้อมูลผ่าน JSONP เพื่อรับผลลัพธ์การเช็กชื่อซ้ำจาก Google Apps Script
+            let callbackName = "handleResponse_" + Math.round(Math.random() * 1000000);
+
+            window[callbackName] = function(response) {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk me-2"></i>บันทึกเข้า Google Sheet';
+
+                if (response.status === "DUPLICATE_NAME") {
+                    alert("❌ ไม่สามารถบันทึกได้: มีชื่อสินค้านี้ (\"" + name + "\") ในระบบแล้ว!");
+                } else if (response.status === "DUPLICATE_BARCODE") {
+                    alert("❌ ไม่สามารถบันทึกได้: บาร์โค้ดนี้ (\"" + barcode + "\") ถูกใช้งานแล้ว!");
+                } else if (response.status === "SUCCESS") {
+                    alert("✅ บันทึกสินค้าเรียบร้อยแล้ว! (รหัสสินค้า: " + response.barcode + ")");
+                    document.getElementById("productForm").reset();
+                } else {
+                    alert("เกิดข้อผิดพลาดในการบันทึก");
+                }
+
+                delete window[callbackName];
+                let scriptElem = document.getElementById(callbackName);
+                if (scriptElem) scriptElem.remove();
+            };
+
+            let url = WEB_APP_URL + "?action=addProduct" +
+                      "&type=" + encodeURIComponent(type) +
+                      "&barcode=" + encodeURIComponent(barcode) +
+                      "&name=" + encodeURIComponent(name) +
+                      "&price=" + encodeURIComponent(price) +
+                      "&callback=" + callbackName;
+
+            let script = document.createElement("script");
+            script.id = callbackName;
+            script.src = url;
+            script.onerror = function() {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk me-2"></i>บันทึกเข้า Google Sheet';
+                alert("ไม่สามารถเชื่อมต่อกับ Google Apps Script ได้");
+            };
+            document.body.appendChild(script);
+        }
     </script>
 </body>
 </html>
