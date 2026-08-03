@@ -105,6 +105,9 @@
     </div>
 
     <script>
+        let lastScannedCode = "";
+let lastScanTime = 0;
+const SCAN_COOLDOWN = 1500; // หน่วงเวลา 1.5 วินาที (1500 ms) ก่อนจะยอมให้สแกนซ้ำได้
         const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzrdQG6AsybHZToeK8HAD3YkvXEpalw3s6Mtrd9AWC_BlBlCWexqF6T0e-Em9656nzY/exec";
 
         let productsList = [];
@@ -301,7 +304,21 @@
                         { facingMode: "environment" },
                         { fps: 10, qrbox: { width: 250, height: 150 } },
                         (decodedText) => {
+                            let currentTime = new Date().getTime();
+
+                            // ⛔ ถ้าสแกนได้รหัสเดิม และเวลาผ่านไปไม่ถึง 1.5 วินาที -> ให้ข้ามไป (ไม่เพิ่มซ้ำ)
+                            if (decodedText === lastScannedCode && (currentTime - lastScanTime) < SCAN_COOLDOWN) {
+                                return;
+                            }
+
+                            // อัปเดตเวลากับรหัสล่าสุด
+                            lastScannedCode = decodedText;
+                            lastScanTime = currentTime;
+
+                            // เพิ่มสินค้าเข้าตะกร้า
                             searchAndAddProduct(decodedText);
+
+                            // สั่นเตือนเมื่อสแกนติดสำเร็จ
                             if (navigator.vibrate) navigator.vibrate(100);
                         },
                         (err) => {}
