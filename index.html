@@ -237,7 +237,7 @@
             }
         }
 
-        // แสดงผลตารางพร้อมปุ่มเพิ่ม/ลด (+/-)
+        // แสดงผลตารางสินค้าในตะกร้าแบบ "แถวเดียวจัดเต็ม" (Single Line Layout)
         function renderCart() {
             let cartList = document.getElementById("cartList");
             let total = 0;
@@ -258,21 +258,29 @@
                 totalQty += item.qty;
 
                 html += `
-                    <div class="cart-item d-flex justify-content-between align-items-center">
-                        <div>
-                            <div class="fw-bold">${item.name}</div>
-                            <small class="text-muted">${item.price} บาท/ชิ้น</small>
+                    <div class="cart-item d-flex align-items-center justify-content-between py-2 border-bottom text-nowrap">
+                        <!-- 1. ชื่อสินค้า (ยืดหยุ่นตามความยาว และตัดคำด้วย ... ถ้ายาวเกิน) -->
+                        <div class="text-truncate me-2" style="max-width: 140px;" title="${item.name}">
+                            <span class="fw-bold small d-block text-truncate">${item.name}</span>
+                            <small class="text-muted" style="font-size: 0.75rem;">${item.price}฿</small>
                         </div>
-                        <div class="d-flex align-items-center gap-2">
-                            <!-- ปุ่มบวก-ลบ จำนวนสินค้า -->
-                            <div class="d-flex align-items-center bg-light rounded-pill px-1 border">
-                                <button class="btn btn-sm btn-outline-secondary qty-btn" onclick="updateQty(${index}, -1)"><i class="fa-solid fa-minus fs-7"></i></button>
-                                <span class="fw-bold px-2 small">${item.qty}</span>
-                                <button class="btn btn-sm btn-outline-secondary qty-btn" onclick="updateQty(${index}, 1)"><i class="fa-solid fa-plus fs-7"></i></button>
-                            </div>
-                            <span class="fw-bold text-primary ms-1" style="min-width: 60px; text-align: right;">${itemTotal.toFixed(2)}</span>
-                            <button class="btn btn-sm btn-outline-danger py-0 px-2 ms-1" onclick="removeItem(${index})"><i class="fa-solid fa-trash"></i></button>
+
+                        <!-- 2. ปุ่มเพิ่ม/ลด จำนวน (+ / -) -->
+                        <div class="d-flex align-items-center bg-light rounded-pill px-1 border me-2">
+                            <button class="btn btn-sm p-0 text-secondary" style="width:22px; height:22px; line-height:1;" onclick="updateQty(${index}, -1)"><i class="fa-solid fa-minus" style="font-size: 0.7rem;"></i></button>
+                            <span class="fw-bold px-1 small" style="font-size: 0.85rem;">${item.qty}</span>
+                            <button class="btn btn-sm p-0 text-secondary" style="width:22px; height:22px; line-height:1;" onclick="updateQty(${index}, 1)"><i class="fa-solid fa-plus" style="font-size: 0.7rem;"></i></button>
                         </div>
+
+                        <!-- 3. ราคารวมของรายการนี้ -->
+                        <div class="fw-bold text-primary text-end me-2" style="min-width: 55px; font-size: 0.9rem;">
+                            ${itemTotal.toFixed(2)}
+                        </div>
+
+                        <!-- 4. ปุ่มลบรายการ -->
+                        <button class="btn btn-sm btn-outline-danger border-0 p-1" onclick="removeItem(${index})" title="ลบ">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
                     </div>
                 `;
             });
