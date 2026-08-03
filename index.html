@@ -336,7 +336,7 @@
             });
         }
 
-        // ระบบสแกนกล้องแบบ POS ห้าง
+        // ระบบสแกนกล้องแบบแม่นยำสูง (โฟกัสบาร์โค้ดแท่งได้ตรงเป๊ะ)
         async function toggleCamera() {
             const btn = document.getElementById("toggleCamBtn");
             const statusText = document.getElementById("cameraStatus");
@@ -357,15 +357,30 @@
                     }
                     if(statusText) statusText.style.display = "none";
 
+                    // Config ปรับแต่งให้สแกนบาร์โค้ดสินค้าแม่นยำขึ้น
+                    const scanConfig = { 
+                        fps: 15, // เพิ่มความเร็วเฟรมเรตให้อ่านไวขึ้น
+                        qrbox: { width: 280, height: 120 }, // ปรับกรอบสแกนเป็นสี่เหลี่ยมผืนผ้าแนวนอน (เหมาะกับบาร์โค้ดแท่ง)
+                        aspectRatio: 1.0,
+                        experimentalFeatures: {
+                            useBarCodeDetectorIfSupported: true // ใช้ตัวจับบาร์โค้ดระดับฮาร์ดแวร์ของมือถือ (ถ้ามี)
+                        }
+                    };
+
+                    // ตั้งค่ากล้องให้โฟกัสภาพคมชัด
+                    const cameraConfig = { 
+                        facingMode: "environment",
+                        width: { min: 640, ideal: 1280 },
+                        height: { min: 480, ideal: 720 }
+                    };
+
                     await html5QrCode.start(
-                        { facingMode: "environment" },
-                        { fps: 10, qrbox: { width: 250, height: 150 } },
+                        cameraConfig,
+                        scanConfig,
                         (decodedText) => {
                             let currentTime = new Date().getTime();
 
-                            // 🧠 ตรรกะห้าง:
-                            // 1. ถ้าบาร์โค้ดไม่เหมือนเดิม -> สแกนติดทันที (ไม่รอ)
-                            // 2. ถ้าเป็นบาร์โค้ดเดิม -> ต้องรอผ่านไป 10 วินาที ถึงจะยอมให้ยิงซ้ำ
+                            // ตรรกะป้องกันสแกนซ้ำ 10 วินาทีสำหรับสินค้าชิ้นเดิม
                             if (decodedText === lastScannedCode && (currentTime - lastScanTime) < SCAN_COOLDOWN) {
                                 return;
                             }
