@@ -12,6 +12,7 @@
         * { font-family: 'Prompt', sans-serif; }
         body { background-color: #f4f6f9; padding-bottom: 30px; }
         .card-custom { background: white; border-radius: 16px; border: none; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+        #reader { width: 100%; border-radius: 12px; overflow: hidden; background: #222; min-height: 200px; }
     </style>
 </head>
 <body>
@@ -23,8 +24,15 @@
                 <a href="index.html" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-cash-register me-1"></i>ไปหน้าคิดเงิน</a>
             </div>
 
-            <!-- สแกนบาร์โค้ด -->
-            <div id="reader" class="mb-3"></div>
+            <!-- โซนช่องแสดงกล้องสแกน -->
+            <div class="mb-3 text-center">
+                <div id="reader" class="d-flex align-items-center justify-content-center text-white mb-2">
+                    <span id="cameraStatus">กดปุ่มด้านล่างเพื่อเปิดกล้องสแกน</span>
+                </div>
+                <button type="button" id="toggleCamBtn" class="btn btn-sm btn-outline-primary" onclick="toggleCamera()">
+                    <i class="fa-solid fa-camera me-1"></i>เปิดกล้องสแกนบาร์โค้ด
+                </button>
+            </div>
 
             <form id="productForm">
                 <div class="mb-3">
@@ -37,7 +45,7 @@
 
                 <div class="mb-3" id="barcodeGroup">
                     <label class="form-label small fw-medium">รหัสบาร์โค้ด</label>
-                    <input type="text" id="pBarcode" class="form-control" placeholder="สแกนกล้อง หรือ รหัส 5 หลัก เช่น 00001">
+                    <input type="text" id="pBarcode" class="form-control" placeholder="สแกนกล้อง หรือ พิมพ์เลขบาร์โค้ด">
                 </div>
 
                 <div class="mb-3">
@@ -61,12 +69,64 @@
     <script>
         const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxg7CUckIt30WEqFiHTW9u6UvlmjnYO54YbEdvOjkcvX_9NNjexu2wUy3ncOqqVcWAc/exec";
 
-        let scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: { width: 220, height: 120 } });
-        scanner.render((barcode) => {
-            document.getElementById("pBarcode").value = barcode;
-            document.getElementById("pType").value = "barcode";
-            toggleBarcodeField();
-        });
+        let html5QrCode = null;
+        let isCamOpen = false;
+
+        async function toggleCamera() {
+            const btn = document.getElementById("toggleCamBtn");
+            const statusText = document.getElementById("cameraStatus");
+
+            if (isCamOpen) {
+                // ปิดกล้อง
+                if (html5QrCode) {
+                    await html5QrCode.stop();
+                    html5QrCode = null;
+                }
+                isCamOpen = false;
+                btn.className = "btn btn-sm btn-outline-primary";
+                btn.innerHTML = '<i class="fa-solid fa-camera me-1"></i>เปิดกล้องสแกนบาร์โค้ด';
+                if(statusText) statusText.style.display = "block";
+            } else {
+                // เปิดกล้อง
+                try {
+                    if (!html5QrCode) {
+                        html5QrCode = new Html5Qrcode("reader");
+                    }
+                    if(statusText) statusText.style.display = "none";
+                    
+                    // บังคับใช้กล้องหลัง (facingMode: environment)
+                    await html5QrCode.start(
+                        { facingMode: "environment" },
+                        { fps: 10, qrbox: { width: 250, height: 150 } },
+                        (decodedText) => {
+                            // เมื่อสแกนเจอ
+                            document.getElementById("pBarcode").value = decodedText;
+                            document.getElementById("pType").value = "barcode";
+                            toggleBarcodeField();
+                            
+                            // สั่นแจ้งเตือนถ้าเครื่องรองรับ
+                            if (navigator.vibrate) navigator.vibrate(100);
+                            
+                            // ปิดกล้องหลังสแกนสำเร็จ
+                            toggleCamera();
+                        },
+                        (errorMessage) => {
+                            // ข้าม error ชั่วคราวขณะสแกน
+                        }
+                    );
+
+                    isCamOpen = true;
+                    btn.className = "btn btn-sm btn-outline-danger";
+                    btn.innerHTML = '<i class="fa-solid fa-camera-rotate me-1"></i>ปิดกล้อง';
+
+                } catch (err) {
+                    alert("⚠️ ไม่สามารถเปิดกล้องได้: โปรดตรวจสอบว่าอนุญาตสิทธิ์การใช้กล้องแล้ว และใช้งานผ่าน HTTPS (GitHub Pages)");
+                    btn.className = "btn btn-sm btn-outline-primary";
+                    btn.innerHTML = '<i class="fa-solid fa-camera me-1"></i>เปิดกล้องสแกนบาร์โค้ด';
+                    if(statusText) statusText.style.display = "block";
+                }
+            }
+        }
 
         function toggleBarcodeField() {
             let type = document.getElementById("pType").value;
@@ -80,7 +140,7 @@
             let priceInput = document.getElementById("pPrice").value.trim();
             let price = parseFloat(priceInput);
 
-            // ⛔ 1. เช็กห้ามเป็นค่าว่าง
+            // ⛔ เช็กห้ามเว้นว่าง
             if (name === "") {
                 alert("⚠️ กรุณากรอก \"ชื่อสินค้า\" (ห้ามเว้นว่าง)");
                 document.getElementById("pName").focus();
@@ -103,7 +163,6 @@
             saveBtn.disabled = true;
             saveBtn.innerText = "กำลังตรวจสอบและบันทึก...";
 
-            // 2. ส่งข้อมูลผ่าน JSONP เพื่อรับผลลัพธ์การเช็กชื่อซ้ำจาก Google Apps Script
             let callbackName = "handleResponse_" + Math.round(Math.random() * 1000000);
 
             window[callbackName] = function(response) {
