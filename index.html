@@ -97,16 +97,27 @@
 
         // ค้นหาและเพิ่มสินค้าเข้าตะกร้า
         function searchAndAddProduct(code = null) {
-            let searchKey = code || document.getElementById("searchInput").value.trim();
+            let searchKey = (code || document.getElementById("searchInput").value).toString().trim().toLowerCase();
             if (!searchKey) return;
 
-            // หาจาก Barcode หรือ Name
-            let found = productsList.find(p => p[0].toString().trim() === searchKey || p[1].toString().trim().toLowerCase() === searchKey.toLowerCase());
+            // ค้นหาแบบคลอบคลุม (เทียบ Barcode แบบตัด 0 ข้างหน้าออกด้วย หรือเทียบชื่อสินค้า)
+            let found = productsList.find(p => {
+                let pBarcode = (p[0] || "").toString().trim().toLowerCase();
+                let pName = (p[1] || "").toString().trim().toLowerCase();
+                
+                // แปลงรหัสเป็นตัวเลขล้วนเพื่อเช็กกรณี 00001 กับ 1
+                let cleanSearch = searchKey.replace(/^0+/, ''); // ตัด 0 ข้างหน้าออก
+                let cleanBarcode = pBarcode.replace(/^0+/, '');
+
+                return pBarcode === searchKey || 
+                       (cleanSearch !== "" && cleanBarcode === cleanSearch) || 
+                       pName.includes(searchKey);
+            });
 
             if (found) {
                 let barcode = found[0];
                 let name = found[1];
-                let price = parseFloat(found[2]);
+                let price = parseFloat(found[2]) || 0;
 
                 let existItem = cart.find(item => item.barcode === barcode);
                 if (existItem) {
@@ -118,10 +129,9 @@
                 document.getElementById("searchInput").value = "";
                 renderCart();
             } else {
-                alert("❌ ไม่พบสินค้าตัวนี้ในระบบ (กรุณาเช็กในคลังสินค้า)");
+                alert("❌ ไม่พบสินค้ารหัส/ชื่อ: \"" + searchKey + "\"\n(ลองตรวจเช็กในแผ่นงาน Products บน Google Sheet อีกครั้งนะครับ)");
             }
         }
-
         // แสดงผลรายการในตะกร้า
         function renderCart() {
             let cartList = document.getElementById("cartList");
