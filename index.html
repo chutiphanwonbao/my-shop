@@ -36,16 +36,41 @@
                 </button>
             </div>
 
-            <!-- โซนค้นหาด้วยการพิมพ์รหัส/ชื่อ -->
-            <div class="input-group mb-3">
-                <input type="text" id="searchInput" class="form-control" placeholder="พิมพ์บาร์โค้ด หรือ รหัส 5 หลัก (เช่น 00001)">
+            <!-- โหมดการเพิ่มสินค้า -->
+            <ul class="nav nav-pills nav-justified mb-3" id="pills-tab">
+                <li class="nav-item">
+                    <button class="nav-link active py-1 small" id="tab-search" onclick="switchMode('search')"><i class="fa-solid fa-magnifying-glass me-1"></i>ค้นหาในคลัง</button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link py-1 small" id="tab-custom" onclick="switchMode('custom')"><i class="fa-solid fa-pen-to-square me-1"></i>สินค้าอื่นๆ / กำหนดราคาเอง</button>
+                </li>
+            </ul>
+
+            <!-- โซนค้นหาในคลัง -->
+            <div id="searchModeZone" class="input-group mb-3">
+                <input type="text" id="searchInput" class="form-control" placeholder="พิมพ์บาร์โค้ด, รหัส 5 หลัก หรือชื่อสินค้า">
                 <button class="btn btn-primary" type="button" onclick="searchAndAddProduct()"><i class="fa-solid fa-plus me-1"></i>เพิ่ม</button>
+            </div>
+
+            <!-- โซนสินค้าอื่นๆ (กำหนดราคาเอง) -->
+            <div id="customModeZone" class="mb-3" style="display: none;">
+                <div class="row g-2 mb-2">
+                    <div class="col-7">
+                        <input type="text" id="customName" class="form-control form-control-sm" placeholder="ชื่อสินค้า (เช่น น้ำแข็ง, ผัก)">
+                    </div>
+                    <div class="col-5">
+                        <input type="number" id="customPrice" class="form-control form-control-sm" placeholder="ราคา (บาท)" step="0.5">
+                    </div>
+                </div>
+                <button class="btn btn-sm btn-success w-100 fw-bold" type="button" onclick="addCustomProduct()">
+                    <i class="fa-solid fa-cart-plus me-1"></i>เพิ่มรายการนี้เข้าตะกร้า
+                </button>
             </div>
 
             <!-- แสดงรายการสินค้าในตะกร้า -->
             <div class="mb-3">
                 <h6 class="fw-bold mb-2"><i class="fa-solid fa-cart-shopping me-2"></i>รายการสินค้า (<span id="itemCount">0</span>)</h6>
-                <div id="cartList" class="border-top border-bottom py-2" style="min-height: 120px; max-height: 250px; overflow-y: auto;">
+                <div id="cartList" class="border-top border-bottom py-2" style="min-height: 120px; max-height: 220px; overflow-y: auto;">
                     <div class="text-center text-muted py-4 small">ยังไม่มีสินค้าในตะกร้า</div>
                 </div>
             </div>
@@ -76,14 +101,13 @@
     </div>
 
     <script>
-        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzrdQG6AsybHZToeK8HAD3YkvXEpalw3s6Mtrd9AWC_BlBlCWexqF6T0e-Em9656nzY/exec";
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxg7CUckIt30WEqFiHTW9u6UvlmjnYO54YbEdvOjkcvX_9NNjexu2wUy3ncOqqVcWAc/exec";
 
         let productsList = [];
         let cart = [];
         let html5QrCode = null;
         let isCamOpen = false;
 
-        // โหลดข้อมูลสินค้าทั้งหมดเตรียมไว้
         window.onload = function() {
             fetch(WEB_APP_URL)
                 .then(res => res.json())
@@ -95,18 +119,57 @@
                 .catch(err => console.error("โหลดข้อมูลสินค้าไม่สำเร็จ", err));
         };
 
-        // ค้นหาและเพิ่มสินค้าเข้าตะกร้า
+        // สลับโหมดค้นหา / กำหนดราคาเอง
+        function switchMode(mode) {
+            if (mode === 'search') {
+                document.getElementById("searchModeZone").style.display = "flex";
+                document.getElementById("customModeZone").style.display = "none";
+                document.getElementById("tab-search").className = "nav-link active py-1 small";
+                document.getElementById("tab-custom").className = "nav-link py-1 small";
+            } else {
+                document.getElementById("searchModeZone").style.display = "none";
+                document.getElementById("customModeZone").style.display = "block";
+                document.getElementById("tab-search").className = "nav-link py-1 small";
+                document.getElementById("tab-custom").className = "nav-link active py-1 small";
+            }
+        }
+
+        // เพิ่มสินค้าคีย์มือ/กำหนดราคาเอง (เช่น น้ำแข็ง 5 บาท, 10 บาท)
+        function addCustomProduct() {
+            let name = document.getElementById("customName").value.trim() || "สินค้าทั่วไป";
+            let priceInput = document.getElementById("customPrice").value.trim();
+            let price = parseFloat(priceInput);
+
+            if (priceInput === "" || isNaN(price) || price <= 0) {
+                alert("⚠️ กรุณากรอกราคาขายให้ถูกต้อง");
+                document.getElementById("customPrice").focus();
+                return;
+            }
+
+            // เพิ่มเข้าตะกร้าโดยใช้ชื่อและราคาตามระบุ
+            let customKey = "CUSTOM_" + name + "_" + price;
+            let existItem = cart.find(item => item.barcode === customKey);
+
+            if (existItem) {
+                existItem.qty += 1;
+            } else {
+                cart.push({ barcode: customKey, name: name, price: price, qty: 1 });
+            }
+
+            document.getElementById("customName").value = "";
+            document.getElementById("customPrice").value = "";
+            renderCart();
+        }
+
+        // ค้นหาในคลังปกติ
         function searchAndAddProduct(code = null) {
             let searchKey = (code || document.getElementById("searchInput").value).toString().trim().toLowerCase();
             if (!searchKey) return;
 
-            // ค้นหาแบบคลอบคลุม (เทียบ Barcode แบบตัด 0 ข้างหน้าออกด้วย หรือเทียบชื่อสินค้า)
             let found = productsList.find(p => {
                 let pBarcode = (p[0] || "").toString().trim().toLowerCase();
                 let pName = (p[1] || "").toString().trim().toLowerCase();
-                
-                // แปลงรหัสเป็นตัวเลขล้วนเพื่อเช็กกรณี 00001 กับ 1
-                let cleanSearch = searchKey.replace(/^0+/, ''); // ตัด 0 ข้างหน้าออก
+                let cleanSearch = searchKey.replace(/^0+/, '');
                 let cleanBarcode = pBarcode.replace(/^0+/, '');
 
                 return pBarcode === searchKey || 
@@ -129,10 +192,10 @@
                 document.getElementById("searchInput").value = "";
                 renderCart();
             } else {
-                alert("❌ ไม่พบสินค้ารหัส/ชื่อ: \"" + searchKey + "\"\n(ลองตรวจเช็กในแผ่นงาน Products บน Google Sheet อีกครั้งนะครับ)");
+                alert("❌ ไม่พบสินค้ารหัส/ชื่อ: \"" + searchKey + "\"");
             }
         }
-        // แสดงผลรายการในตะกร้า
+
         function renderCart() {
             let cartList = document.getElementById("cartList");
             let total = 0;
@@ -194,7 +257,6 @@
             }
         }
 
-        // ชำระเงินและบันทึกลง Google Sheet
         function checkout() {
             let total = parseFloat(document.getElementById("grandTotal").innerText) || 0;
             let cash = parseFloat(document.getElementById("cashInput").value) || 0;
@@ -233,7 +295,6 @@
             });
         }
 
-        // ระบบเปิด/ปิด กล้องสแกน
         async function toggleCamera() {
             const btn = document.getElementById("toggleCamBtn");
             const statusText = document.getElementById("cameraStatus");
