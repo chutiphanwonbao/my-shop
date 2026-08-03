@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>หน้าคิดเงิน - ร้านขายของชำ</title>
+    <title>เครื่องคิดเงิน - ร้านขายของชำ</title>
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -22,11 +22,11 @@
         <div class="card card-custom p-4">
             
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h4 class="m-0 fw-bold"><i class="fa-solid fa-cash-register me-2 text-primary"></i>คิดเงิน</h4>
+                <h4 class="m-0 fw-bold"><i class="fa-solid fa-calculator me-2 text-primary"></i>เครื่องคิดเงิน</h4>
                 <a href="manage.html" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-boxes-stacked me-1"></i>คลังสินค้า</a>
             </div>
 
-            <!-- โซนสแกนบาร์โค้ด -->
+            <!-- สแกนบาร์โค้ด -->
             <div class="mb-3 text-center">
                 <div id="reader" class="d-flex align-items-center justify-content-center text-white mb-2">
                     <span id="cameraStatus">กดปุ่มด้านล่างเพื่อเปิดกล้องสแกน</span>
@@ -36,28 +36,23 @@
                 </button>
             </div>
 
-            <!-- สถานะโหลดคลังสินค้า -->
-            <div id="loadingStatus" class="alert alert-info py-2 small mb-3 text-center">
-                <i class="fa-solid fa-spinner fa-spin me-2"></i>กำลังดึงข้อมูลคลังสินค้า...
-            </div>
-
-            <!-- โหมดการเพิ่มสินค้า -->
-            <ul class="nav nav-pills nav-justified mb-3" id="pills-tab">
+            <!-- สลับโหมด: ค้นหาในคลัง / ระบุราคาเอง -->
+            <ul class="nav nav-pills nav-justified mb-3">
                 <li class="nav-item">
                     <button class="nav-link active py-1 small" id="tab-search" onclick="switchMode('search')"><i class="fa-solid fa-magnifying-glass me-1"></i>ค้นหาในคลัง</button>
                 </li>
                 <li class="nav-item">
-                    <button class="nav-link py-1 small" id="tab-custom" onclick="switchMode('custom')"><i class="fa-solid fa-pen-to-square me-1"></i>สินค้าอื่นๆ / กำหนดราคาเอง</button>
+                    <button class="nav-link py-1 small" id="tab-custom" onclick="switchMode('custom')"><i class="fa-solid fa-pen-to-square me-1"></i>สินค้าอื่นๆ / ระบุราคาเอง</button>
                 </li>
             </ul>
 
-            <!-- โซนค้นหาในคลัง -->
+            <!-- โซน 1: ค้นหาในคลัง -->
             <div id="searchModeZone" class="input-group mb-3">
                 <input type="text" id="searchInput" class="form-control" placeholder="พิมพ์บาร์โค้ด, รหัส 5 หลัก หรือชื่อสินค้า">
                 <button class="btn btn-primary" type="button" onclick="searchAndAddProduct()"><i class="fa-solid fa-plus me-1"></i>เพิ่ม</button>
             </div>
 
-            <!-- โซนสินค้าอื่นๆ (กำหนดราคาเอง) -->
+            <!-- โซน 2: สินค้าอื่นๆ / ระบุราคาเอง (เช่น น้ำแข็ง 5, 10, 20 บาท) -->
             <div id="customModeZone" class="mb-3" style="display: none;">
                 <div class="row g-2 mb-2">
                     <div class="col-7">
@@ -68,19 +63,22 @@
                     </div>
                 </div>
                 <button class="btn btn-sm btn-success w-100 fw-bold" type="button" onclick="addCustomProduct()">
-                    <i class="fa-solid fa-cart-plus me-1"></i>เพิ่มรายการนี้เข้าตะกร้า
+                    <i class="fa-solid fa-cart-plus me-1"></i>เพิ่มเข้าตะกร้า
                 </button>
             </div>
 
-            <!-- แสดงรายการสินค้าในตะกร้า -->
+            <!-- ตะกร้าสินค้า -->
             <div class="mb-3">
-                <h6 class="fw-bold mb-2"><i class="fa-solid fa-cart-shopping me-2"></i>รายการสินค้า (<span id="itemCount">0</span>)</h6>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="fw-bold m-0"><i class="fa-solid fa-cart-shopping me-2"></i>รายการ (<span id="itemCount">0</span>)</h6>
+                    <button class="btn btn-sm btn-link text-danger p-0 text-decoration-none" onclick="clearCart()"><i class="fa-solid fa-rotate-left me-1"></i>ล้างตะกร้า</button>
+                </div>
                 <div id="cartList" class="border-top border-bottom py-2" style="min-height: 120px; max-height: 220px; overflow-y: auto;">
                     <div class="text-center text-muted py-4 small">ยังไม่มีสินค้าในตะกร้า</div>
                 </div>
             </div>
 
-            <!-- แบนเนอร์ราคารวม -->
+            <!-- ยอดรวม -->
             <div class="total-banner text-center mb-3">
                 <span class="small opacity-75">รวมราคาทั้งสิ้น</span>
                 <h2 class="m-0 fw-bold"><span id="grandTotal">0.00</span> บาท</h2>
@@ -98,8 +96,9 @@
                 </div>
             </div>
 
-            <button type="button" id="checkoutBtn" class="btn btn-success w-100 py-2 fw-bold fs-5" onclick="checkout()" disabled>
-                <i class="fa-solid fa-check-circle me-2"></i>ชำระเงินและบันทึก
+            <!-- ปุ่มเสร็จสิ้น (แค่ล้างตะกร้าเตรียมรับลูกค้ารายต่อไป) -->
+            <button type="button" id="finishBtn" class="btn btn-success w-100 py-2 fw-bold fs-5" onclick="finishSale()" disabled>
+                <i class="fa-solid fa-circle-check me-2"></i>จบการขาย (รับลูกค้ารายต่อไป)
             </button>
 
         </div>
@@ -113,24 +112,11 @@
         let html5QrCode = null;
         let isCamOpen = false;
 
-        // ดึงคลังสินค้าด้วยวิธี JSONP เมื่อเปิดหน้าเว็บ
+        // โหลดข้อมูลราคาจากคลังสินค้ามาไว้ในเครื่อง
         window.onload = function() {
-            loadProducts();
-        };
-
-        function loadProducts() {
             let callbackName = "handleLoadProducts_" + Math.round(Math.random() * 1000000);
-            
             window[callbackName] = function(data) {
-                let statusElem = document.getElementById("loadingStatus");
-                if (Array.isArray(data)) {
-                    productsList = data;
-                    statusElem.className = "alert alert-success py-1 small mb-3 text-center";
-                    statusElem.innerHTML = `<i class="fa-solid fa-check-circle me-1"></i>โหลดคลังสินค้าแล้ว (${productsList.length} รายการ)`;
-                } else {
-                    statusElem.className = "alert alert-warning py-1 small mb-3 text-center";
-                    statusElem.innerHTML = `<i class="fa-solid fa-triangle-exclamation me-1"></i>โหลดข้อมูลไม่สำเร็จ`;
-                }
+                if (Array.isArray(data)) productsList = data;
                 delete window[callbackName];
                 let scriptElem = document.getElementById(callbackName);
                 if (scriptElem) scriptElem.remove();
@@ -139,11 +125,8 @@
             let script = document.createElement("script");
             script.id = callbackName;
             script.src = WEB_APP_URL + "?callback=" + callbackName;
-            script.onerror = function() {
-                document.getElementById("loadingStatus").innerHTML = "⚠️ ไม่สามารถดึงคลังสินค้าได้";
-            };
             document.body.appendChild(script);
-        }
+        };
 
         function switchMode(mode) {
             if (mode === 'search') {
@@ -159,6 +142,7 @@
             }
         }
 
+        // เพิ่มสินค้าคีย์มือ/ระบุราคาเอง
         function addCustomProduct() {
             let name = document.getElementById("customName").value.trim() || "สินค้าทั่วไป";
             let priceInput = document.getElementById("customPrice").value.trim();
@@ -184,6 +168,7 @@
             renderCart();
         }
 
+        // ค้นหาและคำนวณราคาจากคลัง
         function searchAndAddProduct(code = null) {
             let searchKey = (code || document.getElementById("searchInput").value).toString().trim().toLowerCase();
             if (!searchKey) return;
@@ -227,7 +212,7 @@
                 cartList.innerHTML = '<div class="text-center text-muted py-4 small">ยังไม่มีสินค้าในตะกร้า</div>';
                 document.getElementById("grandTotal").innerText = "0.00";
                 document.getElementById("itemCount").innerText = "0";
-                document.getElementById("checkoutBtn").disabled = true;
+                document.getElementById("finishBtn").disabled = true;
                 calculateChange();
                 return;
             }
@@ -255,12 +240,18 @@
             cartList.innerHTML = html;
             document.getElementById("grandTotal").innerText = total.toFixed(2);
             document.getElementById("itemCount").innerText = totalQty;
-            document.getElementById("checkoutBtn").disabled = false;
+            document.getElementById("finishBtn").disabled = false;
             calculateChange();
         }
 
         function removeItem(index) {
             cart.splice(index, 1);
+            renderCart();
+        }
+
+        function clearCart() {
+            cart = [];
+            document.getElementById("cashInput").value = "";
             renderCart();
         }
 
@@ -279,42 +270,11 @@
             }
         }
 
-        function checkout() {
-            let total = parseFloat(document.getElementById("grandTotal").innerText) || 0;
-            let cash = parseFloat(document.getElementById("cashInput").value) || 0;
-
-            if (cash < total && cart.length > 0) {
-                alert("⚠️ เงินที่รับมาน้อยกว่าราคาสินค้ารวม!");
-                return;
-            }
-
-            let btn = document.getElementById("checkoutBtn");
-            btn.disabled = true;
-            btn.innerText = "กำลังบันทึกประวัติการขาย...";
-
-            let summary = cart.map(i => `${i.name} (x${i.qty})`).join(", ");
-
-            fetch(WEB_APP_URL, {
-                method: "POST",
-                mode: "no-cors",
-                body: JSON.stringify({
-                    action: "checkout",
-                    itemsSummary: summary,
-                    total: total
-                })
-            })
-            .then(() => {
-                alert("✅ ชำระเงินเรียบร้อยแล้ว!\nเงินทอน: " + document.getElementById("changeOutput").value + " บาท");
-                cart = [];
-                document.getElementById("cashInput").value = "";
-                renderCart();
-            })
-            .catch(err => {
-                alert("เกิดข้อผิดพลาดในการบันทึก");
-            })
-            .finally(() => {
-                btn.innerText = "ชำระเงินและบันทึก";
-            });
+        // กดปุ่มจบการขาย -> แสดงทอนเงินแล้วรีเซ็ตตะกร้าเพื่อรับลูกค้าคนถัดไปทันที (ไม่ต้องรอส่งข้อมูล)
+        function finishSale() {
+            let change = document.getElementById("changeOutput").value;
+            alert("✨ คิดเงินเรียบร้อย!\nเงินทอน: " + change + " บาท");
+            clearCart();
         }
 
         async function toggleCamera() {
