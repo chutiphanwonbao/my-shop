@@ -36,6 +36,11 @@
                 </button>
             </div>
 
+            <!-- สถานะโหลดคลังสินค้า -->
+            <div id="loadingStatus" class="alert alert-info py-2 small mb-3 text-center">
+                <i class="fa-solid fa-spinner fa-spin me-2"></i>กำลังดึงข้อมูลคลังสินค้า...
+            </div>
+
             <!-- โหมดการเพิ่มสินค้า -->
             <ul class="nav nav-pills nav-justified mb-3" id="pills-tab">
                 <li class="nav-item">
@@ -108,18 +113,38 @@
         let html5QrCode = null;
         let isCamOpen = false;
 
+        // ดึงคลังสินค้าด้วยวิธี JSONP เมื่อเปิดหน้าเว็บ
         window.onload = function() {
-            fetch(WEB_APP_URL)
-                .then(res => res.json())
-                .then(data => {
-                    if (Array.isArray(data)) {
-                        productsList = data;
-                    }
-                })
-                .catch(err => console.error("โหลดข้อมูลสินค้าไม่สำเร็จ", err));
+            loadProducts();
         };
 
-        // สลับโหมดค้นหา / กำหนดราคาเอง
+        function loadProducts() {
+            let callbackName = "handleLoadProducts_" + Math.round(Math.random() * 1000000);
+            
+            window[callbackName] = function(data) {
+                let statusElem = document.getElementById("loadingStatus");
+                if (Array.isArray(data)) {
+                    productsList = data;
+                    statusElem.className = "alert alert-success py-1 small mb-3 text-center";
+                    statusElem.innerHTML = `<i class="fa-solid fa-check-circle me-1"></i>โหลดคลังสินค้าแล้ว (${productsList.length} รายการ)`;
+                } else {
+                    statusElem.className = "alert alert-warning py-1 small mb-3 text-center";
+                    statusElem.innerHTML = `<i class="fa-solid fa-triangle-exclamation me-1"></i>โหลดข้อมูลไม่สำเร็จ`;
+                }
+                delete window[callbackName];
+                let scriptElem = document.getElementById(callbackName);
+                if (scriptElem) scriptElem.remove();
+            };
+
+            let script = document.createElement("script");
+            script.id = callbackName;
+            script.src = WEB_APP_URL + "?callback=" + callbackName;
+            script.onerror = function() {
+                document.getElementById("loadingStatus").innerHTML = "⚠️ ไม่สามารถดึงคลังสินค้าได้";
+            };
+            document.body.appendChild(script);
+        }
+
         function switchMode(mode) {
             if (mode === 'search') {
                 document.getElementById("searchModeZone").style.display = "flex";
@@ -134,7 +159,6 @@
             }
         }
 
-        // เพิ่มสินค้าคีย์มือ/กำหนดราคาเอง (เช่น น้ำแข็ง 5 บาท, 10 บาท)
         function addCustomProduct() {
             let name = document.getElementById("customName").value.trim() || "สินค้าทั่วไป";
             let priceInput = document.getElementById("customPrice").value.trim();
@@ -146,7 +170,6 @@
                 return;
             }
 
-            // เพิ่มเข้าตะกร้าโดยใช้ชื่อและราคาตามระบุ
             let customKey = "CUSTOM_" + name + "_" + price;
             let existItem = cart.find(item => item.barcode === customKey);
 
@@ -161,7 +184,6 @@
             renderCart();
         }
 
-        // ค้นหาในคลังปกติ
         function searchAndAddProduct(code = null) {
             let searchKey = (code || document.getElementById("searchInput").value).toString().trim().toLowerCase();
             if (!searchKey) return;
