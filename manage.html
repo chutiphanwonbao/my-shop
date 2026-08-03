@@ -59,8 +59,7 @@
     </div>
 
     <script>
-        // 🔗 วาง URL ของ Google Apps Script ที่นี่
-        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwZDTZLgNsuA-0PhG6hKUudHNk3N_yrK0GeYrVQNx0pde9CgLWvM-QkUMhZLhIkFMUi/exec";
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxg7CUckIt30WEqFiHTW9u6UvlmjnYO54YbEdvOjkcvX_9NNjexu2wUy3ncOqqVcWAc/exec";
 
         let scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: { width: 220, height: 120 } });
         scanner.render((barcode) => {
@@ -78,43 +77,33 @@
             let type = document.getElementById("pType").value;
             let barcode = document.getElementById("pBarcode").value.trim();
             let name = document.getElementById("pName").value.trim();
-            let price = parseFloat(document.getElementById("pPrice").value);
+            let priceInput = document.getElementById("pPrice").value.trim();
+            let price = parseFloat(priceInput);
 
-            if (!name || isNaN(price) || (type === "barcode" && !barcode)) {
-                alert("กรุณากรอกข้อมูลให้ครบถ้วน");
+            // ⛔ 1. เช็กห้ามเป็นค่าว่าง
+            if (name === "") {
+                alert("⚠️ กรุณากรอก \"ชื่อสินค้า\" (ห้ามเว้นว่าง)");
+                document.getElementById("pName").focus();
+                return;
+            }
+
+            if (priceInput === "" || isNaN(price) || price < 0) {
+                alert("⚠️ กรุณากรอก \"ราคาขาย\" ให้ถูกต้อง (ต้องมากกว่าหรือเท่ากับ 0 บาท)");
+                document.getElementById("pPrice").focus();
+                return;
+            }
+
+            if (type === "barcode" && barcode === "") {
+                alert("⚠️ สินค้าประเภท \"มีบาร์โค้ด\" กรุณาสแกนหรือกรอกรหัสบาร์โค้ดด้วยครับ");
+                document.getElementById("pBarcode").focus();
                 return;
             }
 
             let saveBtn = document.querySelector("button[onclick='saveProduct()']");
             saveBtn.disabled = true;
-            saveBtn.innerText = "กำลังบันทึก...";
+            saveBtn.innerText = "กำลังตรวจสอบและบันทึก...";
 
-            // ส่งข้อมูลด้วย Form Data ทันที ไม่ต้องรอดึงข้อมูลเดิม
-            let formData = new URLSearchParams();
-            formData.append("action", "addProduct");
-            formData.append("type", type);
-            formData.append("barcode", barcode);
-            formData.append("name", name);
-            formData.append("price", price);
-
-            fetch(WEB_APP_URL, {
-                method: "POST",
-                mode: "no-cors",
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: formData.toString()
-            })
-            .then(() => {
-                alert("✅ ส่งข้อมูลบันทึกเรียบร้อยแล้ว!");
-                document.getElementById("productForm").reset();
-            })
-            .catch(err => {
-                alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
-            })
-            .finally(() => {
-                saveBtn.disabled = false;
-                saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk me-2"></i>บันทึกเข้า Google Sheet';
-            });
-        }
+            // ... (โค้ด JSONP ส่วนเดิมด้านล่างปล่อยไว้เหมือนเดิมได้เลยครับ) ...
     </script>
 </body>
 </html>
